@@ -1,73 +1,130 @@
-# Welcome to your Lovable project
+# IGDTUW Student Hub
 
-## Project info
+A comprehensive student portal for IGDTUW (Indira Gandhi Delhi Technical University for Women) providing centralized access to academics, campus information, opportunities, and more.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+## Project Structure
 
-## How can I edit this code?
+This is a monorepo containing:
+- **Frontend** (`/frontend`): React + TypeScript + Vite application
+- **Backend** (`/backend`): Node.js + Express API with AI-powered features
 
-There are several ways of editing your application.
+## Technologies Used
 
-**Use Lovable**
+### Frontend
+- **React 18** - UI library
+- **TypeScript** - Type-safe development
+- **Vite** - Fast build tool and dev server
+- **Tailwind CSS** - Utility-first styling
+- **shadcn/ui** - Component library
+- **Supabase** - Authentication and database
+- **React Router** - Client-side routing
+- **TanStack Query** - Data fetching and caching
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+### Backend
+- **Node.js + Express** - REST API server
+- **TypeScript** - Type-safe backend code
+- **Supabase** - PostgreSQL database with RLS
+- **Google Gemini AI** - AI-powered opportunity discovery
+- **node-cron** - Scheduled tasks for data refresh
 
-Changes made via Lovable will be committed automatically to this repo.
+## Getting Started
 
-**Use your preferred IDE**
+### Prerequisites
+- Node.js 18+ (recommended: install via [nvm](https://github.com/nvm-sh/nvm))
+- Supabase account
+- Google Gemini API key
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+### Installation
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
+1. Clone the repository:
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
 git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+cd igdtuw-student-hub
 ```
 
-**Edit a file directly in GitHub**
+2. Install frontend dependencies:
+```sh
+cd frontend
+npm install
+```
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+3. Install backend dependencies:
+```sh
+cd ../backend
+npm install
+```
 
-**Use GitHub Codespaces**
+### Environment Setup
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+1. Create `frontend/.env`:
+```
+VITE_SUPABASE_URL=your_supabase_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+VITE_BACKEND_URL=http://localhost:3001
+```
 
-## What technologies are used for this project?
+2. Create `backend/.env`:
+```
+SUPABASE_URL=your_supabase_url
+SUPABASE_SERVICE_KEY=your_supabase_service_key
+GEMINI_API_KEY=your_gemini_api_key
+PORT=3001
+FRONTEND_URL=http://localhost:8080
+```
 
-This project is built with:
+### Running the Project
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+1. Start the frontend (from `/frontend`):
+```sh
+npm run dev
+```
+Frontend will run on `http://localhost:8080`
 
-## How can I deploy this project?
+2. Start the backend (from `/backend`):
+```sh
+npm run dev
+```
+Backend will run on `http://localhost:3001`
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+## Features
 
-## Can I connect a custom domain to my Lovable project?
+- 🔐 **Authentication** - Secure login/signup with Supabase Auth
+- 📚 **Academics** - Course materials, timetables, and resources
+- 🏫 **Campus** - Campus information and facilities
+- 🎯 **Opportunities** - AI-curated internships, scholarships, and events
+- ⚙️ **Settings** - Profile management and preferences
+- 📱 **Responsive Design** - Works on all devices
 
-Yes, you can!
+## Deployment
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+### Frontend
+Deploy to Vercel, Netlify, or any static hosting:
+```sh
+cd frontend
+npm run build
+# Deploy the 'dist' folder
+```
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+### Backend
+Deploy to Railway, Render, or any Node.js hosting:
+```sh
+cd backend
+npm run build
+# Deploy with 'npm start'
+```
+
+## Database Schema
+
+The project uses Supabase (PostgreSQL) with the following main tables:
+- `profiles` - User profiles and metadata
+- `opportunities` - Internships, scholarships, events (planned)
+- `subjects` - Course information (planned)
+- `societies` - Student societies and clubs (planned)
+
+## Contributing
+
+This is a student project for IGDTUW. Contributions and suggestions are welcome!
+
+## License
+
+MIT

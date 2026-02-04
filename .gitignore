@@ -12,6 +12,17 @@ dist
 dist-ssr
 *.local
 
+# Monorepo folders
+frontend/node_modules
+frontend/dist
+frontend/.env
+backend/node_modules
+backend/dist
+backend/.env
+
+# Root env (no longer used)
+.env
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
