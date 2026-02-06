@@ -6,12 +6,14 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { cleanSearchResultsWithGemini } from './fetchers/gemini';
 import { searchOpportunitiesWithSerpAPI, buildSearchQueries, SearchResult } from './fetchers/serpapi';
 import { saveOpportunitiesToDatabase, cleanupExpiredOpportunities, getLastSyncTime } from './services/opportunityService';
+import { recommendSocieties } from './services/recommendationService';
 
 // Load environment variables from .env file
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+const SYNC_INTERVAL_HOURS = 24;
 
 // Middleware setup
 app.use(cors({
@@ -59,6 +61,32 @@ app.get('/api/check-gemini', async (req, res) => {
   }
 });
 
+// Society recommendations endpoint
+app.post('/api/recommend-societies', async (req, res) => {
+  try {
+    const { userId, limit = 5 } = req.body || {};
+
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        error: 'userId is required',
+      });
+    }
+
+    const recommendations = await recommendSocieties(userId, Number(limit) || 5);
+
+    return res.json({
+      success: true,
+      recommendations,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error occurred',
+    });
+  }
+});
+
 // Sync opportunities endpoint
 app.post('/api/sync-opportunities', async (req, res) => {
   try {
@@ -68,7 +96,7 @@ app.post('/api/sync-opportunities', async (req, res) => {
     const { type = 'mixed' } = req.body;
     
     // Validate type
-    const validTypes = ['internship', 'scholarship', 'mixed', 'hackathon', 'competition', 'workshop'];
+    const validTypes = ['internship', 'scholarship', 'mixed', 'hackathon', 'competition', 'workshop', 'research_conference'];
     if (!validTypes.includes(type)) {
       return res.status(400).json({
         success: false,
@@ -169,9 +197,9 @@ async function performScheduledSync() {
       console.log(`📅 Last sync was ${hoursSinceLastSync.toFixed(1)} hours ago`);
       
       // Only sync if > 24 hours have passed
-      if (hoursSinceLastSync < 24) {
+      if (hoursSinceLastSync < SYNC_INTERVAL_HOURS) {
         console.log('⏭️  Skipping sync - less than 24 hours since last fetch');
-        console.log(`⏳ Next sync in ${(24 - hoursSinceLastSync).toFixed(1)} hours\n`);
+        console.log(`⏳ Next sync in ${(SYNC_INTERVAL_HOURS - hoursSinceLastSync).toFixed(1)} hours\n`);
         return;
       }
     } else {

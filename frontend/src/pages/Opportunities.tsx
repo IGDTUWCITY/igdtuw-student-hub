@@ -40,9 +40,11 @@ import {
   Trophy,
   Loader2,
   BookOpen,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { format } from 'date-fns';
+import { differenceInCalendarDays, format } from 'date-fns';
 
 const opportunityIcons: Record<OpportunityType, any> = {
   hackathon: Trophy,
@@ -53,6 +55,8 @@ const opportunityIcons: Record<OpportunityType, any> = {
   research_conference: BookOpen,
 };
 
+const RETENTION_DAYS = 7;
+
 export default function Opportunities() {
   const { user, profile } = useAuth();
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
@@ -61,11 +65,16 @@ export default function Opportunities() {
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [activeTab, setActiveTab] = useState('explore');
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     fetchOpportunities();
     if (user) fetchSavedOpportunities();
   }, [user]);
+
+  useEffect(() => {
+    setExpandedGroups({});
+  }, [searchQuery, typeFilter, activeTab]);
 
   const fetchOpportunities = async () => {
     setLoading(true);
@@ -79,6 +88,7 @@ export default function Opportunities() {
   };
 
   const fetchSavedOpportunities = async () => {
+    if (!user) return;
     const { data } = await supabase
       .from('saved_opportunities')
       .select('*, opportunity:opportunities(*)')
@@ -88,21 +98,37 @@ export default function Opportunities() {
   };
 
   const toggleSave = async (oppId: string) => {
+    if (!user) {
+      toast.error('Please sign in to save opportunities');
+      return;
+    }
+
     const isSaved = savedOpps.some((s) => s.opportunity_id === oppId);
 
     if (isSaved) {
-      await supabase
+      const { error } = await supabase
         .from('saved_opportunities')
         .delete()
         .eq('user_id', user!.id)
         .eq('opportunity_id', oppId);
+
+      if (error) {
+        toast.error(error.message || 'Could not remove from saved');
+        return;
+      }
+
       toast.success('Removed from saved');
     } else {
-      await supabase.from('saved_opportunities').insert({
+      const { error } = await supabase.from('saved_opportunities').insert({
         user_id: user!.id,
         opportunity_id: oppId,
-        status: 'saved',
       });
+
+      if (error) {
+        toast.error(error.message || 'Could not save opportunity');
+        return;
+      }
+
       toast.success('Saved to your list');
     }
 
@@ -122,6 +148,42 @@ export default function Opportunities() {
     return matchesSearch && matchesType;
   });
 
+  const sortedOpportunities = [...filteredOpportunities].sort(
+    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  );
+
+  const groupedOpportunities = sortedOpportunities.reduce(
+    (acc, opp) => {
+      const createdDate = new Date(opp.created_at);
+      const key = format(createdDate, 'yyyy-MM-dd');
+
+      if (!acc[key]) {
+        acc[key] = {
+          label: format(createdDate, 'd MMM yyyy'),
+          items: [],
+        };
+      }
+
+      acc[key].items.push(opp);
+      return acc;
+    },
+    {} as Record<string, { label: string; items: Opportunity[] }>
+  );
+
+  const groupedList = Object.entries(groupedOpportunities).map(
+    ([key, value]) => ({
+      key,
+      ...value,
+    })
+  );
+
+  const toggleGroup = (key: string) => {
+    setExpandedGroups((prev) => ({
+      ...prev,
+      [key]: !prev[key],
+    }));
+  };
+
   const OpportunityCard = ({
     opp,
     showStatus = false,
@@ -132,6 +194,12 @@ export default function Opportunities() {
     const Icon = opportunityIcons[opp.opportunity_type] || Briefcase;
     const isSaved = savedOpps.some((s) => s.opportunity_id === opp.id);
     const savedEntry = savedOpps.find((s) => s.opportunity_id === opp.id);
+    const expiringSoon = (() => {
+      const createdDate = new Date(opp.created_at);
+      if (Number.isNaN(createdDate.getTime())) return false;
+      const daysSinceListed = differenceInCalendarDays(new Date(), createdDate);
+      return daysSinceListed === RETENTION_DAYS;
+    })();
 
     return (
       <motion.div
@@ -188,6 +256,11 @@ export default function Opportunities() {
                   Remote
                 </Badge>
               )}
+              {expiringSoon && (
+                <Badge className="text-xs border-amber-300 text-amber-700 bg-amber-50">
+                  Expiring soon
+                </Badge>
+              )}
               {opp.stipend && (
                 <Badge variant="outline" className="text-xs text-success">
                   {opp.stipend}
@@ -212,17 +285,10 @@ export default function Opportunities() {
 
             <div className="flex items-center justify-between pt-2 border-t border-border">
               <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                {opp.deadline ? (
-                  <span className="flex items-center gap-1">
-                    <Calendar className="w-3 h-3" />
-                    {format(new Date(opp.deadline), 'MMM d')}
-                  </span>
-                ) : (
-                  <span className="flex items-center gap-1">
-                    <Calendar className="w-3 h-3" />
-                    Deadline: Not specified
-                  </span>
-                )}
+                <span className="flex items-center gap-1">
+                  <Calendar className="w-3 h-3" />
+                  Listed on {format(new Date(opp.created_at), 'MMM d')}
+                </span>
                 {opp.location && (
                   <span className="flex items-center gap-1">
                     <MapPin className="w-3 h-3" />
@@ -248,10 +314,12 @@ export default function Opportunities() {
               <div className="pt-2 border-t border-border">
                 <Badge
                   variant={
-                    savedEntry.status === 'applied' ? 'default' : 'secondary'
+                    (savedEntry.status ?? 'saved') === 'applied'
+                      ? 'default'
+                      : 'secondary'
                   }
                 >
-                  {savedEntry.status}
+                  {savedEntry.status ?? 'saved'}
                 </Badge>
               </div>
             )}
@@ -314,7 +382,12 @@ export default function Opportunities() {
           {/* Opportunities Grid */}
           {loading ? (
             <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+              <div className="flex flex-col items-center gap-3">
+                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                <p className="text-sm text-muted-foreground">
+                  Please wait, we are fetching new opportunities...
+                </p>
+              </div>
             </div>
           ) : filteredOpportunities.length === 0 ? (
             <motion.div
@@ -333,9 +406,47 @@ export default function Opportunities() {
               </p>
             </motion.div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredOpportunities.map((opp) => (
-                <OpportunityCard key={opp.id} opp={opp} />
+            <div className="space-y-8">
+              {groupedList.map((group) => (
+                <div key={group.key} className="space-y-4">
+                  <div className="flex items-center gap-4">
+                    <div className="h-px flex-1 bg-border" />
+                    <span className="text-xs uppercase tracking-widest text-muted-foreground">
+                      Listed on {group.label}
+                    </span>
+                    <div className="h-px flex-1 bg-border" />
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {(expandedGroups[group.key]
+                      ? group.items
+                      : group.items.slice(0, 6)
+                    ).map((opp) => (
+                      <OpportunityCard key={opp.id} opp={opp} />
+                    ))}
+                  </div>
+                  {group.items.length > 6 && (
+                    <div className="flex justify-center">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => toggleGroup(group.key)}
+                        className="text-xs text-muted-foreground"
+                      >
+                        {expandedGroups[group.key] ? (
+                          <>
+                            View less
+                            <ChevronUp className="w-4 h-4 ml-2" />
+                          </>
+                        ) : (
+                          <>
+                            View more
+                            <ChevronDown className="w-4 h-4 ml-2" />
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  )}
+                </div>
               ))}
             </div>
           )}

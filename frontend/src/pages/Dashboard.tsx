@@ -32,10 +32,42 @@ export default function Dashboard() {
 
   const fetchDashboardData = async () => {
     // Fetch CGPA
-    const { data: cgpaData } = await supabase.rpc('calculate_cgpa', {
-      p_user_id: user!.id,
-    });
-    if (cgpaData !== null) setCgpa(cgpaData);
+    const { data: cgpaData, error: cgpaError } = await supabase.rpc(
+      'calculate_cgpa',
+      {
+        p_user_id: user!.id,
+      }
+    );
+
+    if (cgpaError) {
+      const { data: semestersData } = await supabase
+        .from('semesters')
+        .select('sgpa, total_credits, is_completed')
+        .eq('user_id', user!.id)
+        .eq('is_completed', true);
+
+      if (semestersData) {
+        const totals = semestersData.reduce(
+          (acc, sem) => {
+            const credits = sem.total_credits ?? 0;
+            const sgpa = sem.sgpa ?? 0;
+            return {
+              totalCredits: acc.totalCredits + credits,
+              totalPoints: acc.totalPoints + sgpa * credits,
+            };
+          },
+          { totalCredits: 0, totalPoints: 0 }
+        );
+
+        setCgpa(
+          totals.totalCredits > 0
+            ? Number((totals.totalPoints / totals.totalCredits).toFixed(2))
+            : 0
+        );
+      }
+    } else if (cgpaData !== null) {
+      setCgpa(cgpaData);
+    }
 
     // Fetch saved opportunities count
     const { count: savedOppsCount } = await supabase

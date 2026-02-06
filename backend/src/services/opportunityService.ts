@@ -1,5 +1,19 @@
 import { supabaseAdmin } from './supabase';
 import { FetchedOpportunity } from '../fetchers/gemini';
+import crypto from 'crypto';
+
+function buildStableExternalId(
+  title: string,
+  organization: string | null | undefined,
+  opportunityType: string
+): string {
+  const normalizedTitle = title.trim().toLowerCase();
+  const normalizedOrg = (organization || '').trim().toLowerCase();
+  const normalizedType = opportunityType.trim().toLowerCase();
+  const raw = `${normalizedTitle}|${normalizedOrg}|${normalizedType}`;
+  const hash = crypto.createHash('sha256').update(raw).digest('hex');
+  return `igdtuw-${hash.slice(0, 16)}`;
+}
 
 /**
  * Save opportunities to Supabase database
@@ -30,9 +44,9 @@ export async function saveOpportunitiesToDatabase(
       const normalizedSkills = Array.isArray(opp.required_skills)
         ? opp.required_skills
         : typeof opp.required_skills === 'string'
-          ? opp.required_skills
+          ? (opp.required_skills as string)
               .split(',')
-              .map((skill) => skill.trim())
+              .map((skill: string) => skill.trim())
               .filter(Boolean)
           : [];
 
@@ -48,15 +62,42 @@ export async function saveOpportunitiesToDatabase(
         ? opp.apply_link
         : null;
 
+      const stableExternalId = buildStableExternalId(
+        opp.title,
+        opp.organization,
+        opp.opportunity_type
+      );
+
       // Check if opportunity already exists (using external_id)
       const { data: existing } = await supabaseAdmin
         .from('opportunities')
         .select('id')
-        .eq('external_id', opp.external_id)
+        .eq('external_id', stableExternalId)
         .single();
 
       if (existing) {
         console.log(`⏭️  Skipping duplicate: ${opp.title}`);
+        skipped++;
+        continue;
+      }
+
+      // Additional duplicate check (title + organization match)
+      const normalizedTitle = opp.title.trim();
+      const normalizedOrg = opp.organization?.trim();
+
+      let duplicateQuery = supabaseAdmin
+        .from('opportunities')
+        .select('id')
+        .ilike('title', normalizedTitle);
+
+      if (normalizedOrg) {
+        duplicateQuery = duplicateQuery.ilike('organization', normalizedOrg);
+      }
+
+      const { data: titleMatch } = await duplicateQuery.maybeSingle();
+
+      if (titleMatch) {
+        console.log(`⏭️  Skipping duplicate by title/org: ${opp.title}`);
         skipped++;
         continue;
       }
@@ -73,7 +114,7 @@ export async function saveOpportunitiesToDatabase(
         stipend: normalizedStipend,
         required_skills: normalizedSkills,
         apply_link: normalizedApplyLink,
-        external_id: opp.external_id,
+        external_id: stableExternalId,
       });
 
       if (error) {
@@ -110,14 +151,17 @@ export async function getLastSyncTime(): Promise<Date | null> {
 }
 
 /**
- * Delete old opportunities past their deadline
- * Keeps database clean by removing expired opportunities
+ * Delete opportunities older than 7 days (based on fetch/listed date)
+ * Keeps database clean by removing stale opportunities
  */
 export async function cleanupExpiredOpportunities(): Promise<number> {
+  const cutoffDate = new Date();
+  cutoffDate.setDate(cutoffDate.getDate() - 7);
+
   const { data, error } = await supabaseAdmin
     .from('opportunities')
     .delete()
-    .lt('deadline', new Date().toISOString())
+    .lt('created_at', cutoffDate.toISOString())
     .select('id');
 
   if (error) {

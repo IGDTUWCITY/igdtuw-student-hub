@@ -9,7 +9,7 @@ import {
   GraduationCap,
   Briefcase,
   Users,
-  Settings,
+  User,
   LogOut,
   ChevronLeft,
   ChevronRight,
@@ -21,7 +21,7 @@ const navItems = [
   { icon: GraduationCap, label: 'Academics', path: '/academics' },
   { icon: Briefcase, label: 'Opportunities', path: '/opportunities' },
   { icon: Users, label: 'Campus Life', path: '/campus' },
-  { icon: Settings, label: 'Settings', path: '/settings' },
+  { icon: User, label: 'Profile', path: '/settings' },
 ];
 
 import { ModeToggle } from '@/components/mode-toggle';

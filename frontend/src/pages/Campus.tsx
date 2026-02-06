@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Announcement, Society } from '@/types/database';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import {
   Card,
@@ -24,20 +25,35 @@ import {
   Instagram,
   Linkedin,
   Pin,
+  Sparkles,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 
 export default function Campus() {
-  const { user } = useAuth();
+  const { user, profile, refreshProfile } = useAuth();
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [societies, setSocieties] = useState<Society[]>([]);
+  const [recommendations, setRecommendations] = useState<(Society & { score?: number })[]>([]);
+  const [recLoading, setRecLoading] = useState(false);
+  const [recError, setRecError] = useState<string | null>(null);
+  const [recFetched, setRecFetched] = useState(false);
+  const [interestInput, setInterestInput] = useState('');
+  const [savingInterest, setSavingInterest] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('announcements');
+  const [activeTab, setActiveTab] = useState(() => {
+    return sessionStorage.getItem('campusActiveTab') || 'announcements';
+  });
+
+  const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
 
   useEffect(() => {
     fetchData();
   }, []);
+
+  useEffect(() => {
+    sessionStorage.setItem('campusActiveTab', activeTab);
+  }, [activeTab]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -85,6 +101,65 @@ export default function Campus() {
       toast.error('Failed to add to calendar');
     } else {
       toast.success('Added to your calendar');
+    }
+  };
+
+  const saveInterest = async () => {
+    if (!user) {
+      toast.error('Please sign in to save interests');
+      return;
+    }
+
+    const trimmed = interestInput.trim();
+    if (!trimmed) return;
+
+    setSavingInterest(true);
+    const current = profile?.interests || [];
+    const next = Array.from(new Set([...current, trimmed]));
+
+    const { error } = await supabase
+      .from('profiles')
+      .update({ interests: next })
+      .eq('id', user.id);
+
+    if (error) {
+      toast.error(error.message || 'Failed to save interest');
+    } else {
+      setInterestInput('');
+      await refreshProfile();
+      toast.success('Interest saved');
+    }
+
+    setSavingInterest(false);
+  };
+
+  const fetchRecommendations = async () => {
+    if (!user) {
+      toast.error('Please sign in to get recommendations');
+      return;
+    }
+
+    setRecLoading(true);
+    setRecError(null);
+    setRecFetched(true);
+
+    try {
+      const response = await fetch(`${backendUrl}/api/recommend-societies`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.id, limit: 6 }),
+      });
+
+      const data = await response.json();
+      if (!response.ok || !data?.success) {
+        throw new Error(data?.error || 'Failed to fetch recommendations');
+      }
+
+      setRecommendations(data.recommendations || []);
+    } catch (error) {
+      setRecError(error instanceof Error ? error.message : 'Failed to fetch recommendations');
+    } finally {
+      setRecLoading(false);
     }
   };
 
@@ -304,17 +379,93 @@ export default function Campus() {
               </p>
             </motion.div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {societies.map((society, index) => (
-                <motion.div
-                  key={society.id}
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: index * 0.05 }}
-                >
-                  <SocietyCard society={society} />
-                </motion.div>
-              ))}
+            <div className="space-y-8">
+              <Card className="border-dashed">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Sparkles className="w-5 h-5 text-primary" />
+                    Confused which society to join?
+                  </CardTitle>
+                  <CardDescription>
+                    IGDTUW City has got your back. Tell us your interests to get recommendations.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {(!profile?.interests || profile.interests.length === 0) && (
+                    <div className="flex flex-col md:flex-row gap-3">
+                      <Input
+                        placeholder="Add an interest (e.g., AI, Robotics, Design)"
+                        value={interestInput}
+                        onChange={(e) => setInterestInput(e.target.value)}
+                      />
+                      <Button
+                        onClick={saveInterest}
+                        disabled={savingInterest || !interestInput.trim()}
+                      >
+                        {savingInterest ? 'Saving...' : 'Save interest'}
+                      </Button>
+                    </div>
+                  )}
+
+                  {profile?.interests && profile.interests.length > 0 && (
+                    <p className="text-sm text-muted-foreground">
+                      You can edit your interests in the Profile section and save changes.
+                    </p>
+                  )}
+
+                  <div className="flex flex-wrap gap-2">
+                    {(profile?.interests || []).map((interest) => (
+                      <Badge key={interest} variant="secondary">
+                        {interest}
+                      </Badge>
+                    ))}
+                  </div>
+
+                  <div className="flex flex-wrap gap-3">
+                    <Button onClick={fetchRecommendations} disabled={recLoading}>
+                      {recLoading ? 'Finding matches...' : 'Show recommendations'}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => (window.location.href = '/settings')}
+                    >
+                      Edit interests in Profile
+                    </Button>
+                  </div>
+
+                  {recError && (
+                    <p className="text-sm text-destructive">{recError}</p>
+                  )}
+
+                  {recFetched && !recLoading && recommendations.length === 0 && !recError && (
+                    <p className="text-sm text-muted-foreground">
+                      Sorry, we couldn’t find a match for these interests right now.
+                      Try adding a few broader interests and explore other clubs below.
+                    </p>
+                  )}
+
+                  {recommendations.length > 0 && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {recommendations.map((society) => (
+                        <SocietyCard key={society.id} society={society} />
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {societies.map((society, index) => (
+                  <motion.div
+                    key={society.id}
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: index * 0.05 }}
+                  >
+                    <SocietyCard society={society} />
+                  </motion.div>
+                ))}
+              </div>
             </div>
           )}
         </TabsContent>

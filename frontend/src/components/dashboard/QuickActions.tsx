@@ -26,8 +26,8 @@ const actions = [
   },
   {
     icon: User,
-    label: 'Update Profile',
-    description: 'Complete your profile',
+    label: 'Profile',
+    description: 'Manage your details',
     path: '/settings',
     color: 'bg-success/10 text-success',
   },

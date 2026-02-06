@@ -52,6 +52,8 @@ export default function Settings() {
   });
   const [newSkill, setNewSkill] = useState('');
   const [newInterest, setNewInterest] = useState('');
+  const hasPendingSkill = newSkill.trim().length > 0;
+  const hasPendingInterest = newInterest.trim().length > 0;
 
   useEffect(() => {
     if (profile) {
@@ -71,6 +73,11 @@ export default function Settings() {
   }, [profile]);
 
   const handleSave = async () => {
+    if (hasPendingSkill || hasPendingInterest) {
+      toast.error('Please press + to add pending skills/interests before saving');
+      return;
+    }
+
     setSaving(true);
 
     try {
@@ -146,7 +153,7 @@ export default function Settings() {
       {/* Header */}
       <div>
         <h1 className="text-2xl md:text-3xl font-display font-bold text-foreground">
-          Settings
+          Profile
         </h1>
         <p className="text-muted-foreground mt-1">
           Manage your profile and preferences
@@ -374,6 +381,11 @@ export default function Settings() {
                   <Plus className="w-4 h-4" />
                 </Button>
               </div>
+              <p className={hasPendingSkill ? 'text-xs text-destructive' : 'text-xs text-muted-foreground'}>
+                {hasPendingSkill
+                  ? 'Press + to add this skill before saving.'
+                  : 'Press + to add each skill.'}
+              </p>
             </div>
 
             {/* Interests */}
@@ -398,7 +410,7 @@ export default function Settings() {
               </div>
               <div className="flex gap-2">
                 <Input
-                  placeholder="Add an interest (e.g., AI, Web Dev)"
+                  placeholder="Add an interest (e.g., Dance, Theatre, AI etc.)"
                   value={newInterest}
                   onChange={(e) => setNewInterest(e.target.value)}
                   onKeyDown={(e) =>
@@ -409,6 +421,11 @@ export default function Settings() {
                   <Plus className="w-4 h-4" />
                 </Button>
               </div>
+              <p className={hasPendingInterest ? 'text-xs text-destructive' : 'text-xs text-muted-foreground'}>
+                {hasPendingInterest
+                  ? 'Press + to add this interest before saving.'
+                  : 'Press + to add each interest.'}
+              </p>
             </div>
           </CardContent>
         </Card>

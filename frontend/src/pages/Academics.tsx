@@ -60,6 +60,7 @@ export default function Academics() {
   const [saving, setSaving] = useState(false);
   const [pendingSemester, setPendingSemester] = useState<number | null>(null);
   const [isAlertOpen, setIsAlertOpen] = useState(false);
+  const [targetCgpa, setTargetCgpa] = useState('');
 
   useEffect(() => {
     if (user) {
@@ -98,11 +99,16 @@ export default function Academics() {
   };
 
   const fetchSemesters = async (autoSelect = false) => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('semesters')
       .select('*')
       .eq('user_id', user!.id)
       .order('semester_number');
+
+    if (error) {
+      toast.error(error.message || 'Failed to load semesters');
+      return;
+    }
     
     if (data) {
       const loadedSemesters = data as Semester[];
@@ -123,9 +129,43 @@ export default function Academics() {
   };
 
   const fetchCGPA = async () => {
-    const { data } = await supabase.rpc('calculate_cgpa', {
+    const { data, error } = await supabase.rpc('calculate_cgpa', {
       p_user_id: user!.id,
     });
+
+    if (error) {
+      toast.error(error.message || 'Failed to load CGPA');
+      const { data: semestersData, error: semestersError } = await supabase
+        .from('semesters')
+        .select('sgpa, total_credits, is_completed')
+        .eq('user_id', user!.id)
+        .eq('is_completed', true);
+
+      if (semestersError || !semestersData) {
+        toast.error(semestersError?.message || 'Failed to load CGPA');
+        return;
+      }
+
+      const totals = semestersData.reduce(
+        (acc, sem) => {
+          const credits = sem.total_credits ?? 0;
+          const sgpa = sem.sgpa ?? 0;
+          return {
+            totalCredits: acc.totalCredits + credits,
+            totalPoints: acc.totalPoints + sgpa * credits,
+          };
+        },
+        { totalCredits: 0, totalPoints: 0 }
+      );
+
+      setCgpa(
+        totals.totalCredits > 0
+          ? Number((totals.totalPoints / totals.totalCredits).toFixed(2))
+          : 0
+      );
+      return;
+    }
+
     if (data !== null) setCgpa(data);
   };
 
@@ -220,6 +260,11 @@ export default function Academics() {
     setSaving(true);
 
     try {
+      if (!user) {
+        toast.error('Please sign in to save semester');
+        return;
+      }
+
       // Create or update semester
       let semesterId: string;
       const existingSemester = semesters.find(
@@ -233,7 +278,7 @@ export default function Academics() {
 
       if (existingSemester) {
         semesterId = existingSemester.id;
-        await supabase
+        const { error: updateError } = await supabase
           .from('semesters')
           .update({
             sgpa,
@@ -242,10 +287,17 @@ export default function Academics() {
           })
           .eq('id', semesterId);
 
+        if (updateError) throw updateError;
+
         // Delete existing subjects
-        await supabase.from('subjects').delete().eq('semester_id', semesterId);
+        const { error: deleteError } = await supabase
+          .from('subjects')
+          .delete()
+          .eq('semester_id', semesterId);
+
+        if (deleteError) throw deleteError;
       } else {
-        const { data: newSemester } = await supabase
+        const { data: newSemester, error: insertError } = await supabase
           .from('semesters')
           .insert({
             user_id: user!.id,
@@ -257,6 +309,7 @@ export default function Academics() {
           .select()
           .single();
 
+        if (insertError) throw insertError;
         if (!newSemester) throw new Error('Failed to create semester');
         semesterId = newSemester.id;
       }
@@ -264,7 +317,7 @@ export default function Academics() {
       // Insert subjects
       const validSubjects = subjects.filter((s) => s.subject_name && s.grade);
       if (validSubjects.length > 0) {
-        await supabase.from('subjects').insert(
+        const { error: subjectsError } = await supabase.from('subjects').insert(
           validSubjects.map((s) => ({
             semester_id: semesterId,
             user_id: user!.id,
@@ -274,6 +327,8 @@ export default function Academics() {
             grade_points: GRADE_POINTS[s.grade] || 0,
           }))
         );
+
+        if (subjectsError) throw subjectsError;
       }
 
       await fetchSemesters(true);
@@ -287,6 +342,23 @@ export default function Academics() {
   };
 
   const currentSGPA = calculateSGPA();
+  const completedSemesters = semesters.filter((s) => s.is_completed);
+  const completedCredits = completedSemesters.reduce(
+    (acc, s) => acc + (s.total_credits || 0),
+    0
+  );
+  const completedCount = completedSemesters.length;
+  const remainingSemesters = Math.max(8 - completedCount, 0);
+  const avgCredits = completedCount > 0 ? completedCredits / completedCount : 24;
+  const nextSemesterCredits = Math.round(avgCredits);
+  const targetCgpaValue = Number(targetCgpa);
+  const requiredSgpa =
+    nextSemesterCredits > 0 && targetCgpaValue > 0
+      ? (targetCgpaValue * (completedCredits + nextSemesterCredits) -
+          cgpa * completedCredits) /
+        nextSemesterCredits
+      : null;
+  const isTargetValid = Number.isFinite(targetCgpaValue) && targetCgpaValue > 0;
 
   return (
     <div className="p-6 md:p-8 max-w-6xl mx-auto space-y-8">
@@ -358,6 +430,66 @@ export default function Academics() {
           <p className="text-sm text-muted-foreground mt-1">This semester</p>
         </motion.div>
       </div>
+
+      {/* CGPA Target Advisor */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="font-display">CGPA Target Advisor</CardTitle>
+          <CardDescription>
+            Enter a target CGPA to see the SGPA you need next semester
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Target CGPA</Label>
+              <Input
+                type="number"
+                min={0}
+                max={10}
+                step={0.01}
+                placeholder="e.g. 9.0"
+                value={targetCgpa}
+                onChange={(e) => setTargetCgpa(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-border bg-muted/30 p-4 text-sm">
+            {!isTargetValid ? (
+              <span className="text-muted-foreground">
+                Enter a valid target CGPA to see guidance.
+              </span>
+            ) : requiredSgpa === null || !Number.isFinite(requiredSgpa) ? (
+              <span className="text-muted-foreground">
+                Not enough data to calculate required SGPA.
+              </span>
+            ) : requiredSgpa <= 0 ? (
+              <span className="text-muted-foreground">
+                You already meet this target based on your current CGPA.
+              </span>
+            ) : remainingSemesters === 0 ? (
+              <span className="text-muted-foreground">
+                You have completed all semesters. Target adjustments aren’t applicable.
+              </span>
+            ) : requiredSgpa > 10 ? (
+              <span className="text-muted-foreground">
+                Sorry, this target can’t be achieved by next semester. Keep pushing —
+                even a 10.00 SGPA will maximize your progress this semester.
+              </span>
+            ) : (
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant="secondary">
+                  Required SGPA next semester: {requiredSgpa.toFixed(2)}
+                </Badge>
+                <span className="text-muted-foreground">
+                  based on your current performance.
+                </span>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Calculator */}
       <Card>
