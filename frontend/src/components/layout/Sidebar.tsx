@@ -9,6 +9,7 @@ import {
   GraduationCap,
   Briefcase,
   Users,
+  Calendar,
   User,
   LogOut,
   ChevronLeft,
@@ -18,6 +19,7 @@ import { useState } from 'react';
 
 const navItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
+  { icon: Calendar, label: 'Calendar', path: '/calendar' },
   { icon: GraduationCap, label: 'Academics', path: '/academics' },
   { icon: Briefcase, label: 'Opportunities', path: '/opportunities' },
   { icon: Users, label: 'Campus Life', path: '/campus' },
@@ -25,6 +27,7 @@ const navItems = [
 ];
 
 import { ModeToggle } from '@/components/mode-toggle';
+import { Calendar as CalendarComponent } from '../ui/calendar';
 
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);

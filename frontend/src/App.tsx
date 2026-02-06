@@ -16,6 +16,7 @@ import Opportunities from "./pages/Opportunities";
 import Campus from "./pages/Campus";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
+import CalendarPage from "./pages/CalendarPage";
 
 const queryClient = new QueryClient();
 
@@ -42,6 +43,7 @@ const App = () => (
               }
             >
               <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/calendar" element={<CalendarPage />} />
               <Route path="/academics" element={<Academics />} />
               <Route path="/opportunities" element={<Opportunities />} />
               <Route path="/campus" element={<Campus />} />
