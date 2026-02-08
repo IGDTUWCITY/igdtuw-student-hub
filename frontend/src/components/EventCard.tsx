@@ -13,42 +13,52 @@ type ShadeVariant = 'light' | 'bold';
 
 const platformColors: Record<string, Record<ShadeVariant, string>> = {
   codeforces: {
-    light: 'bg-sky-100 text-sky-900 dark:bg-sky-950 dark:text-sky-100',
-    bold: 'bg-sky-600 text-white dark:bg-sky-400 dark:text-slate-900',
+    // Muted Teal – primary, serious contests
+    light: 'bg-teal-100 text-teal-900 dark:bg-teal-900 dark:text-teal-100',
+    bold: 'bg-teal-600 text-white hover:bg-teal-700',
   },
   atcoder: {
-    light: 'bg-orange-100 text-orange-900 dark:bg-orange-950 dark:text-orange-100',
-    bold: 'bg-orange-500 text-white dark:bg-orange-400 dark:text-slate-900',
+    // Slate Blue – long / structured contests
+    light: 'bg-indigo-100 text-indigo-900 dark:bg-indigo-900 dark:text-indigo-100',
+    bold: 'bg-indigo-600 text-white hover:bg-indigo-700',
   },
   leetcode: {
-    light: 'bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-100',
-    bold: 'bg-amber-600 text-white hover:bg-amber-700',
+    // Soft Amber – practice / approachable
+    light: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-100',
+    bold: 'bg-amber-500 text-white hover:bg-amber-600',
   },
   codechef: {
-    light: 'bg-rose-100 text-rose-900 dark:bg-rose-950 dark:text-rose-100',
-    bold: 'bg-rose-600 text-white dark:bg-rose-400 dark:text-slate-900',
+    // Muted Rose – rated / important without harsh red
+    light: 'bg-rose-100 text-rose-900 dark:bg-rose-900 dark:text-rose-100',
+    bold: 'bg-rose-500 text-white hover:bg-rose-600',
   },
   hackerrank: {
-    light: 'bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-100',
-    bold: 'bg-emerald-600 text-white dark:bg-emerald-400 dark:text-slate-900',
+    // Sage Green – complements sidebar without duplicating it
+    light: 'bg-emerald-100 text-emerald-900 dark:bg-emerald-900 dark:text-emerald-100',
+    bold: 'bg-emerald-600 text-white hover:bg-emerald-700',
   },
   hackerearth: {
-    light: 'bg-teal-100 text-teal-900 dark:bg-teal-950 dark:text-teal-100',
-    bold: 'bg-teal-600 text-white dark:bg-teal-400 dark:text-slate-900',
+    // Cool Cyan – secondary platform, softer than teal
+    light: 'bg-cyan-100 text-cyan-900 dark:bg-cyan-900 dark:text-cyan-100',
+    bold: 'bg-cyan-600 text-white hover:bg-cyan-700',
   },
   topcoder: {
-    light: 'bg-violet-100 text-violet-900 dark:bg-violet-950 dark:text-violet-100',
-    bold: 'bg-violet-600 text-white dark:bg-violet-400 dark:text-slate-900',
+    // Neutral Violet – legacy / niche contests
+    light: 'bg-violet-100 text-violet-900 dark:bg-violet-900 dark:text-violet-100',
+    bold: 'bg-violet-600 text-white hover:bg-violet-700',
   },
   unstop: {
-    light: 'bg-fuchsia-100 text-fuchsia-900 dark:bg-fuchsia-950 dark:text-fuchsia-100',
-    bold: 'bg-fuchsia-600 text-white dark:bg-fuchsia-400 dark:text-slate-900',
+    // Warm Taupe / Sand – hackathons & internships
+    light: 'bg-stone-100 text-stone-900 dark:bg-stone-900 dark:text-stone-100',
+    bold: 'bg-stone-600 text-white hover:bg-stone-700',
   },
   anonymous: {
-    light: 'bg-slate-100 text-slate-900 dark:bg-slate-950 dark:text-slate-100',
-    bold: 'bg-slate-600 text-white dark:bg-slate-400 dark:text-slate-900',
+    // Graphite – neutral, background role
+    light: 'bg-slate-100 text-slate-800 dark:bg-slate-900 dark:text-slate-100',
+    bold: 'bg-slate-600 text-white hover:bg-slate-700',
   },
 };
+
 
 function normalizePlatform(value?: unknown) {
   if (!value) return '';

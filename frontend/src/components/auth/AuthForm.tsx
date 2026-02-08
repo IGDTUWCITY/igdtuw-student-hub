@@ -149,7 +149,7 @@ export function AuthForm() {
 
               <Button
                 type="submit"
-                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-medium"
+                className="w-full bg-primary hover:bg-[hsl(var(--primary-hover))] text-primary-foreground font-medium"
                 disabled={loading}
               >
                 {loading ? (

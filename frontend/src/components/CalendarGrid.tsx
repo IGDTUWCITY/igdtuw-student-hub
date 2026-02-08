@@ -17,12 +17,38 @@ interface CalendarGridProps {
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 const PLATFORM_FILTERS = [
-  { key: 'leetcode', label: 'LeetCode', color: 'bg-amber-600 text-white hover:bg-amber-700', dim: 'bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-100' },
-  { key: 'codeforces', label: 'Codeforces', color: 'bg-sky-600 text-white dark:bg-sky-400 dark:text-slate-900', dim: 'bg-sky-100 text-sky-900 dark:bg-sky-950 dark:text-sky-100' },
-  { key: 'atcoder', label: 'AtCoder', color: 'bg-orange-600 text-white hover:bg-orange-700', dim: 'bg-orange-100 text-orange-900 dark:bg-orange-950 dark:text-orange-100' },
-  { key: 'codechef', label: 'CodeChef', color: 'bg-rose-600 text-white hover:bg-rose-700', dim: 'bg-rose-100 text-rose-900 dark:bg-rose-950 dark:text-rose-100' },
-  { key: 'anonymous', label: 'Anonymous', color: 'bg-slate-600 text-white hover:bg-slate-700', dim: 'bg-slate-100 text-slate-900 dark:bg-slate-950 dark:text-slate-100' },
+  {
+    key: 'leetcode',
+    label: 'LeetCode',
+    color: 'bg-amber-500 text-white hover:bg-amber-600',
+    dim: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-100',
+  },
+  {
+    key: 'codeforces',
+    label: 'Codeforces',
+    color: 'bg-teal-600 text-white hover:bg-teal-700',
+    dim: 'bg-teal-100 text-teal-900 dark:bg-teal-900 dark:text-teal-100',
+  },
+  {
+    key: 'atcoder',
+    label: 'AtCoder',
+    color: 'bg-indigo-600 text-white hover:bg-indigo-700',
+    dim: 'bg-indigo-100 text-indigo-900 dark:bg-indigo-900 dark:text-indigo-100',
+  },
+  {
+    key: 'codechef',
+    label: 'CodeChef',
+    color: 'bg-rose-500 text-white hover:bg-rose-600',
+    dim: 'bg-rose-100 text-rose-900 dark:bg-rose-900 dark:text-rose-100',
+  },
+  {
+    key: 'anonymous',
+    label: 'Anonymous',
+    color: 'bg-slate-600 text-white hover:bg-slate-700',
+    dim: 'bg-slate-100 text-slate-800 dark:bg-slate-900 dark:text-slate-100',
+  },
 ];
+
 
 function normalizePlatform(value?: unknown) {
   if (!value) return 'anonymous';
