@@ -230,7 +230,7 @@ export function AIAssistant() {
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
         onClick={() => setIsOpen(!isOpen)}
-        className="pointer-events-auto h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/25 flex items-center justify-center transition-all hover:bg-primary/90"
+        className="pointer-events-auto h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/25 flex items-center justify-center transition-all hover:bg-[hsl(var(--primary-hover))]"
       >
         {isOpen ? (
           <X className="w-6 h-6" />

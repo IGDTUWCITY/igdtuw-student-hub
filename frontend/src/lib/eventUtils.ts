@@ -66,7 +66,7 @@ export function getMonthData(year: number, month: number) {
   }
 
   // Next month's leading days
-  const totalCells = 42; // 6 rows × 7 days
+  const totalCells = 35; // 5 rows × 7 days
   const nextMonthDays: Date[] = [];
   const remainingCells = totalCells - prevMonthDays.length - currentMonthDays.length;
   for (let i = 1; i <= remainingCells; i++) {

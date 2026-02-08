@@ -9,6 +9,31 @@ export function useEvents(from: Date, to: Date, type?: 'contest' | 'hackathon' |
   return useQuery({
     queryKey: ['events', from.toISOString(), to.toISOString(), type],
     queryFn: async (): Promise<CalendarEvent[]> => {
+      const CACHE_TTL_MS = 1000 * 60 * 60 * 24;
+      const cacheKey = `events:${from.toISOString()}:${to.toISOString()}:${type || 'all'}`;
+      try {
+        const cached = localStorage.getItem(cacheKey);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (parsed && parsed.ts && Date.now() - parsed.ts < CACHE_TTL_MS && Array.isArray(parsed.events)) {
+            const revived = parsed.events.map((row: any) => ({
+              id: row.id,
+              title: row.title,
+              description: row.description,
+              startTime: new Date(row.startTime),
+              endTime: new Date(row.endTime),
+              type: row.type as EventType,
+              sourceName: row.sourceName,
+              sourceUrl: row.sourceUrl,
+              platform: row.platform,
+              tags: row.tags || [],
+              lastSyncedAt: new Date(row.lastSyncedAt),
+              dedupeKey: row.dedupeKey,
+            } as CalendarEvent));
+            return revived;
+          }
+        }
+      } catch { void 0; }
       function normalizePlatform(value: unknown) {
         if (!value) return '';
         return value
@@ -115,8 +140,16 @@ export function useEvents(from: Date, to: Date, type?: 'contest' | 'hackathon' |
         events = events.filter(event => event.type === type);
       }
 
+      try {
+        localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), events }));
+      } catch { void 0; }
       return events;
     },
+    staleTime: 1000 * 60 * 60 * 24,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    retry: 2,
+    retryDelay: (attempt) => Math.min(1000 * Math.pow(2, attempt), 10000),
   });
 }
 

@@ -137,7 +137,7 @@ export function CalendarGrid({ events, onEventClick, loading }: CalendarGridProp
         </div>
 
         {/* Days grid */}
-        <div className="grid grid-cols-7 grid-rows-6 h-[calc(100%-2.5rem)] gap-0">
+        <div className="grid grid-cols-7 grid-rows-5 h-[calc(100%-2.5rem)] gap-0">
           <AnimatePresence mode="wait">
             {monthData.allDays.map((date, i) => {
               const isCurrentMonth = date.getMonth() === month;
@@ -152,7 +152,7 @@ export function CalendarGrid({ events, onEventClick, loading }: CalendarGridProp
                   animate={{ opacity: 1 }}
                   transition={{ delay: i * 0.01 }}
                   className={cn(
-                    'border-b border-r border-calendar-grid-line p-1 min-h-[80px] sm:min-h-[100px] overflow-hidden',
+                    'border-b border-r border-calendar-grid-line p-3 min-h-[80px] sm:min-h-[100px] overflow-hidden',
                     !isCurrentMonth && 'bg-muted/30',
                     isWeekend && isCurrentMonth && 'bg-muted/20'
                   )}
@@ -160,7 +160,7 @@ export function CalendarGrid({ events, onEventClick, loading }: CalendarGridProp
                   <div className="flex items-center justify-center mb-1">
                     <span
                       className={cn(
-                        'text-xs sm:text-sm font-medium w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center rounded-full',
+                        'text-xs sm:text-sm font-medium w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-full',
                         !isCurrentMonth && 'text-muted-foreground',
                         isToday && 'bg-primary text-primary-foreground',
                         isWeekend && isCurrentMonth && !isToday && 'text-calendar-weekend'
