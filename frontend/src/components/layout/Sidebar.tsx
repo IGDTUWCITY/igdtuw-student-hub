@@ -78,7 +78,7 @@ export function Sidebar() {
               to={item.path}
               className={cn(
                 'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200',
-                'hover:bg-sidebar-accent group',
+                'hover:bg-sidebar-accent dark:hover:bg-[hsl(var(--primary-hover))] group',
                 isActive
                   ? 'bg-sidebar-primary text-sidebar-primary-foreground'
                   : 'text-sidebar-foreground'
@@ -89,7 +89,7 @@ export function Sidebar() {
                   'w-5 h-5 flex-shrink-0',
                   isActive
                     ? 'text-sidebar-primary-foreground'
-                    : 'text-muted-foreground group-hover:text-sidebar-foreground'
+                    : 'text-muted-foreground group-hover:text-sidebar-foreground dark:group-hover:text-primary-foreground'
                 )}
               />
               {!collapsed && (
@@ -148,7 +148,7 @@ export function Sidebar() {
       {/* Collapse Button */}
       <button
         onClick={() => setCollapsed(!collapsed)}
-        className="absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-sidebar border border-sidebar-border flex items-center justify-center shadow-sm hover:bg-sidebar-accent transition-colors"
+        className="absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-sidebar border border-sidebar-border flex items-center justify-center shadow-sm hover:bg-sidebar-accent dark:hover:bg-[hsl(var(--primary-hover))] transition-colors"
       >
         {collapsed ? (
           <ChevronRight className="w-4 h-4 text-muted-foreground" />

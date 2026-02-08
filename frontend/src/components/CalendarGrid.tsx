@@ -26,20 +26,20 @@ const PLATFORM_FILTERS = [
   {
     key: 'codeforces',
     label: 'Codeforces',
-    color: 'bg-teal-600 text-white hover:bg-teal-700',
-    dim: 'bg-teal-100 text-teal-900 dark:bg-teal-900 dark:text-teal-100',
+    color: 'bg-teal-500 text-white hover:bg-teal-600',
+    dim: 'bg-teal-50 text-teal-800 dark:bg-teal-800 dark:text-teal-100',
   },
   {
     key: 'atcoder',
     label: 'AtCoder',
-    color: 'bg-indigo-600 text-white hover:bg-indigo-700',
-    dim: 'bg-indigo-100 text-indigo-900 dark:bg-indigo-900 dark:text-indigo-100',
+    color: 'bg-indigo-500 text-white hover:bg-indigo-600',
+    dim: 'bg-indigo-50 text-indigo-800 dark:bg-indigo-800 dark:text-indigo-100',
   },
   {
     key: 'codechef',
     label: 'CodeChef',
-    color: 'bg-rose-500 text-white hover:bg-rose-600',
-    dim: 'bg-rose-100 text-rose-900 dark:bg-rose-900 dark:text-rose-100',
+    color: 'bg-rose-400 text-white hover:bg-rose-500',
+    dim: 'bg-rose-50 text-rose-800 dark:bg-rose-800 dark:text-rose-100',
   },
   {
     key: 'anonymous',

@@ -44,6 +44,7 @@
     --border: 214 25% 90%;
     --input: 214 25% 90%;
     --ring: 168 54% 18%;
+    --primary-hover: 168 54% 25%;
     --radius: 0.75rem;
 
     /* Semantic Colors */
@@ -109,7 +110,7 @@
     --border: 220 20% 18%;
     --input: 220 20% 18%;
     --ring: 165 54% 53%;
-    --primary-hover: 165 51% 46%;
+    --primary-hover: 165 60% 60%;
 
     --success: 142 60% 40%;
     --success-foreground: 0 0% 100%;
