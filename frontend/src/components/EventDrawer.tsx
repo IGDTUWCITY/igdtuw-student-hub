@@ -220,57 +220,59 @@ export function EventDrawer({ event, isOpen, onClose }: EventDrawerProps) {
 
               {/* Footer actions */}
               <div className="border-t border-border p-4 space-y-2">
-                <div className="flex gap-2">
-                  <Button
-                    variant={isSaved ? 'secondary' : 'outline'}
-                    className="flex-1 gap-2"
-                    onClick={handleSaveToggle}
-                    disabled={saveEvent.isPending || removeSavedEvent.isPending}
-                  >
-                    {isSaved ? (
-                      <>
-                        <BookmarkCheck className="h-4 w-4" />
-                        Saved
-                      </>
-                    ) : (
-                      <>
-                        <Bookmark className="h-4 w-4" />
-                        Save for Later
-                      </>
-                    )}
-                  </Button>
-
-                  {reminder ? (
+                {event.type !== 'contest' && (
+                  <div className="flex gap-2">
                     <Button
-                      variant="secondary"
+                      variant={isSaved ? 'secondary' : 'outline'}
                       className="flex-1 gap-2"
-                      onClick={handleRemoveReminder}
-                      disabled={removeReminder.isPending}
+                      onClick={handleSaveToggle}
+                      disabled={saveEvent.isPending || removeSavedEvent.isPending}
                     >
-                      <BellOff className="h-4 w-4" />
-                      Remove Reminder
+                      {isSaved ? (
+                        <>
+                          <BookmarkCheck className="h-4 w-4" />
+                          Saved
+                        </>
+                      ) : (
+                        <>
+                          <Bookmark className="h-4 w-4" />
+                          Save for Later
+                        </>
+                      )}
                     </Button>
-                  ) : (
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="outline" className="flex-1 gap-2">
-                          <Bell className="h-4 w-4" />
-                          Set Reminder
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        {REMINDER_OFFSETS.filter(o => o.value > 0).map((option) => (
-                          <DropdownMenuItem
-                            key={option.value}
-                            onClick={() => handleSetReminder(option.value)}
-                          >
-                            {option.label}
-                          </DropdownMenuItem>
-                        ))}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  )}
-                </div>
+
+                    {reminder ? (
+                      <Button
+                        variant="secondary"
+                        className="flex-1 gap-2"
+                        onClick={handleRemoveReminder}
+                        disabled={removeReminder.isPending}
+                      >
+                        <BellOff className="h-4 w-4" />
+                        Remove Reminder
+                      </Button>
+                    ) : (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="outline" className="flex-1 gap-2">
+                            <Bell className="h-4 w-4" />
+                            Set Reminder
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          {REMINDER_OFFSETS.filter(o => o.value > 0).map((option) => (
+                            <DropdownMenuItem
+                              key={option.value}
+                              onClick={() => handleSetReminder(option.value)}
+                            >
+                              {option.label}
+                            </DropdownMenuItem>
+                          ))}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
+                  </div>
+                )}
 
                 {event.sourceUrl && (
                   <Button
