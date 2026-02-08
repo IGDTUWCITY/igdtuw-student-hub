@@ -6,6 +6,7 @@ import { Semester, Subject, GRADES, GRADE_POINTS } from '@/types/database';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import {
   Card,
   CardContent,
@@ -61,6 +62,9 @@ export default function Academics() {
   const [pendingSemester, setPendingSemester] = useState<number | null>(null);
   const [isAlertOpen, setIsAlertOpen] = useState(false);
   const [targetCgpa, setTargetCgpa] = useState('');
+  const [useDirectSgpa, setUseDirectSgpa] = useState(false);
+  const [directSgpa, setDirectSgpa] = useState('');
+  const [directCredits, setDirectCredits] = useState('');
 
   useEffect(() => {
     if (user) {
@@ -188,11 +192,30 @@ export default function Academics() {
             grade: s.grade || '',
           }))
         );
+        setUseDirectSgpa(false);
+        setDirectSgpa('');
+        setDirectCredits('');
       } else {
         setSubjects([createEmptySubject()]);
+        if (semester.is_completed && semester.sgpa !== null) {
+          setUseDirectSgpa(true);
+          setDirectSgpa(semester.sgpa.toFixed(2));
+          setDirectCredits(
+            semester.total_credits !== null && semester.total_credits !== undefined
+              ? semester.total_credits.toString()
+              : ''
+          );
+        } else {
+          setUseDirectSgpa(false);
+          setDirectSgpa('');
+          setDirectCredits('');
+        }
       }
     } else {
       setSubjects([createEmptySubject()]);
+      setUseDirectSgpa(false);
+      setDirectSgpa('');
+      setDirectCredits('');
     }
     setLoading(false);
   };
@@ -256,6 +279,15 @@ export default function Academics() {
     return totalCredits > 0 ? totalPoints / totalCredits : 0;
   };
 
+  const handleDirectToggle = (checked: boolean) => {
+    setUseDirectSgpa(checked);
+    if (!checked) {
+      setDirectSgpa('');
+      setDirectCredits('');
+      if (subjects.length === 0) setSubjects([createEmptySubject()]);
+    }
+  };
+
   const saveSemester = async () => {
     setSaving(true);
 
@@ -271,10 +303,25 @@ export default function Academics() {
         (s) => s.semester_number === selectedSemester
       );
 
-      const sgpa = calculateSGPA();
-      const totalCredits = subjects
-        .filter((s) => s.subject_name && s.grade)
-        .reduce((acc, s) => acc + s.credits, 0);
+      const parsedDirectSgpa = Number(directSgpa);
+      const parsedDirectCredits = Number(directCredits);
+      const sgpa = useDirectSgpa ? parsedDirectSgpa : calculateSGPA();
+      const totalCredits = useDirectSgpa
+        ? parsedDirectCredits
+        : subjects
+            .filter((s) => s.subject_name && s.grade)
+            .reduce((acc, s) => acc + s.credits, 0);
+
+      if (useDirectSgpa) {
+        if (!Number.isFinite(parsedDirectSgpa) || parsedDirectSgpa <= 0 || parsedDirectSgpa > 10) {
+          toast.error('Please enter a valid SGPA between 0 and 10');
+          return;
+        }
+        if (!Number.isFinite(parsedDirectCredits) || parsedDirectCredits <= 0) {
+          toast.error('Please enter valid total credits');
+          return;
+        }
+      }
 
       if (existingSemester) {
         semesterId = existingSemester.id;
@@ -316,7 +363,7 @@ export default function Academics() {
 
       // Insert subjects
       const validSubjects = subjects.filter((s) => s.subject_name && s.grade);
-      if (validSubjects.length > 0) {
+      if (!useDirectSgpa && validSubjects.length > 0) {
         const { error: subjectsError } = await supabase.from('subjects').insert(
           validSubjects.map((s) => ({
             semester_id: semesterId,
@@ -341,7 +388,9 @@ export default function Academics() {
     }
   };
 
-  const currentSGPA = calculateSGPA();
+  const currentSGPA = useDirectSgpa && Number(directSgpa) > 0
+    ? Number(directSgpa)
+    : calculateSGPA();
   const completedSemesters = semesters.filter((s) => s.is_completed);
   const completedCredits = completedSemesters.reduce(
     (acc, s) => acc + (s.total_credits || 0),
@@ -406,7 +455,7 @@ export default function Academics() {
             {currentSGPA.toFixed(2)}
           </p>
           <p className="text-sm text-muted-foreground mt-1">
-            Based on entered grades
+            {useDirectSgpa ? 'Based on direct SGPA entry' : 'Based on entered grades'}
           </p>
         </motion.div>
 
@@ -423,9 +472,11 @@ export default function Academics() {
             </span>
           </div>
           <p className="text-4xl font-bold font-display text-foreground">
-            {subjects
-              .filter((s) => s.subject_name && s.grade)
-              .reduce((acc, s) => acc + s.credits, 0)}
+            {useDirectSgpa
+              ? Number(directCredits) || 0
+              : subjects
+                  .filter((s) => s.subject_name && s.grade)
+                  .reduce((acc, s) => acc + s.credits, 0)}
           </p>
           <p className="text-sm text-muted-foreground mt-1">This semester</p>
         </motion.div>
@@ -498,7 +549,7 @@ export default function Academics() {
             <div>
               <CardTitle className="font-display">SGPA Calculator</CardTitle>
               <CardDescription>
-                Enter your subjects and grades to calculate SGPA
+                Enter your subjects and grades or add SGPA directly
               </CardDescription>
             </div>
 
@@ -551,8 +602,50 @@ export default function Academics() {
             </div>
           ) : (
             <>
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 rounded-lg border border-border bg-muted/30 p-4">
+                <div>
+                  <p className="text-sm font-medium text-foreground">Know your SGPA?</p>
+                  <p className="text-xs text-muted-foreground">
+                    Skip subject entry and provide SGPA + total credits
+                  </p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Label className="text-sm">Enter SGPA directly</Label>
+                  <Switch checked={useDirectSgpa} onCheckedChange={handleDirectToggle} />
+                </div>
+              </div>
+
+              {useDirectSgpa && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Semester SGPA</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      max={10}
+                      step={0.01}
+                      placeholder="e.g. 8.45"
+                      value={directSgpa}
+                      onChange={(e) => setDirectSgpa(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Total Credits</Label>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={40}
+                      step={1}
+                      placeholder="e.g. 24"
+                      value={directCredits}
+                      onChange={(e) => setDirectCredits(e.target.value)}
+                    />
+                  </div>
+                </div>
+              )}
+
               {/* Subject Headers */}
-              {subjects.length > 0 && (
+              {!useDirectSgpa && subjects.length > 0 && (
                 <div className="hidden md:grid grid-cols-12 gap-4 px-4 text-sm font-medium text-muted-foreground">
                   <div className="col-span-5">Subject Name</div>
                   <div className="col-span-2">Credits</div>
@@ -562,7 +655,7 @@ export default function Academics() {
               )}
 
               {/* Subject Rows */}
-              {subjects.length > 0 ? (
+              {!useDirectSgpa && subjects.length > 0 ? (
                 subjects.map((subject, index) => (
                   <motion.div
                     key={subject.id}
@@ -636,7 +729,7 @@ export default function Academics() {
                     </div>
                   </motion.div>
                 ))
-              ) : (
+              ) : !useDirectSgpa ? (
                 <div className="text-center py-12 border-2 border-dashed border-muted rounded-lg">
                   <p className="text-muted-foreground mb-4">No subjects added yet</p>
                   <Button onClick={addSubject} variant="outline">
@@ -644,18 +737,20 @@ export default function Academics() {
                     Add First Subject
                   </Button>
                 </div>
-              )}
+              ) : null}
 
               {/* Actions */}
               <div className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-4">
-                <Button
-                  variant="outline"
-                  onClick={addSubject}
-                  className="w-full sm:w-auto"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Subject
-                </Button>
+                {!useDirectSgpa && (
+                  <Button
+                    variant="outline"
+                    onClick={addSubject}
+                    className="w-full sm:w-auto"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Subject
+                  </Button>
+                )}
 
                 <Button
                   onClick={saveSemester}
