@@ -19,7 +19,7 @@ import { useState } from 'react';
 
 const navItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
-  { icon: Calendar, label: 'Calendar', path: '/calendar' },
+  { icon: Calendar, label: 'Calgo', path: '/calendar' },
   { icon: GraduationCap, label: 'Academics', path: '/academics' },
   { icon: Briefcase, label: 'Opportunities', path: '/opportunities' },
   { icon: Users, label: 'Campus Life', path: '/campus' },

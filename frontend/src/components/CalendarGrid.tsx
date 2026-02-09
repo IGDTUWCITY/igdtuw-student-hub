@@ -111,15 +111,35 @@ export function CalendarGrid({ events, onEventClick, loading }: CalendarGridProp
 
   return (
     <div className="flex flex-col h-screen md:h-[calc(100vh-120px)] w-full">
+     <div className="text-center mt-6 mb-4 px-4 md:px-6">
+  <h1
+          className="text-2xl md:text-4xl font-semibold tracking-tight text-primary"
+    style={{ fontFamily: 'Manrope, Inter, sans-serif' }}
+  >
+    Calendar of Algorithms
+  </h1>
+</div>
+
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4 px-4 md:px-6 pt-4">
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" onClick={goToPreviousMonth}>
-            <ChevronLeft className="h-4 w-4" />
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={goToPreviousMonth}
+            className="group hover:bg-primary/10 hover:border-primary/30 transition-colors"
+          >
+            <ChevronLeft className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
           </Button>
           <h2 className="text-xl font-semibold min-w-[180px] text-center">{monthName}</h2>
-          <Button variant="outline" size="icon" onClick={goToNextMonth}>
-            <ChevronRight className="h-4 w-4" />
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={goToNextMonth}
+            className="group hover:bg-primary/10 hover:border-primary/30 transition-colors"
+          >
+            <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
           </Button>
           <Button variant="ghost" size="sm" onClick={goToToday} className="ml-2">
             Today
