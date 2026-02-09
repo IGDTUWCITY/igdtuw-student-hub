@@ -17,6 +17,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 
+type AnnRow = Announcement & {
+  start_time?: string;
+  end_time?: string;
+  event_date?: string;
+};
+
 export default function Dashboard() {
   const { user } = useAuth();
   const [cgpa, setCgpa] = useState<number | null>(null);
@@ -69,19 +75,21 @@ export default function Dashboard() {
       setCgpa(cgpaData);
     }
 
-    // Fetch saved opportunities count
+    // Fetch saved opportunities count (use GET with limit(0) to avoid HEAD aborts)
     const { count: savedOppsCount } = await supabase
       .from('saved_opportunities')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', user!.id);
+      .select('*', { count: 'exact' })
+      .eq('user_id', user!.id)
+      .limit(0);
     setSavedCount(savedOppsCount || 0);
 
-    // Fetch upcoming events count
+    // Fetch upcoming events count (avoid HEAD)
     const { count: eventsCount } = await supabase
       .from('user_events')
-      .select('*', { count: 'exact', head: true })
+      .select('*', { count: 'exact' })
       .eq('user_id', user!.id)
-      .gte('event_date', new Date().toISOString());
+      .gte('event_date', new Date().toISOString())
+      .limit(0);
     setUpcomingEvents(eventsCount || 0);
 
     // Fetch recent announcements
@@ -91,7 +99,19 @@ export default function Dashboard() {
       .order('created_at', { ascending: false })
       .limit(5);
     if (announcementsData) {
-      setAnnouncements(announcementsData as Announcement[]);
+      const now = new Date();
+      const active = (announcementsData as AnnRow[]).filter((a) => {
+        if (!a.event_date) return true;
+        const timeStr = a.end_time || a.start_time || '23:59';
+        let end = new Date(`${String(a.event_date)}T${timeStr}`);
+        if (isNaN(end.getTime())) {
+          const [y, m, d] = String(a.event_date).split('-').map((s: string) => parseInt(s, 10));
+          const [hh, mm] = String(timeStr).split(':').map((s: string) => parseInt(s, 10));
+          end = new Date(y, (m || 1) - 1, d || 1, hh || 0, mm || 0);
+        }
+        return end.getTime() >= now.getTime();
+      });
+      setAnnouncements(active as Announcement[]);
     }
   };
 

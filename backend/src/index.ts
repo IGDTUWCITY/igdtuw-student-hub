@@ -7,6 +7,7 @@ import { cleanSearchResultsWithGemini } from './fetchers/gemini';
 import { searchOpportunitiesWithSerpAPI, buildSearchQueries, SearchResult } from './fetchers/serpapi';
 import { saveOpportunitiesToDatabase, cleanupExpiredOpportunities, getLastSyncTime } from './services/opportunityService';
 import { recommendSocieties } from './services/recommendationService';
+import { supabaseAdmin } from './services/supabase';
 
 // Load environment variables from .env file
 dotenv.config();
@@ -52,6 +53,97 @@ app.get('/api/check-gemini', async (req, res) => {
       success: true,
       model: modelName,
       response: text,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error occurred',
+    });
+  }
+});
+
+app.post('/api/add-society', async (req, res) => {
+  try {
+    const {
+      userEmail,
+      name,
+      description,
+      category,
+      logo_url,
+      instagram_url,
+      linkedin_url,
+    } = req.body || {};
+
+    if (!userEmail || !name || !category) {
+      return res.status(400).json({
+        success: false,
+        error: 'userEmail, name and category are required',
+      });
+    }
+
+    const allowlist = new Set<string>([
+      'chadhaaarohi@gmail.com',
+    ].map((e) => e.toLowerCase()));
+    if (!allowlist.has(String(userEmail).toLowerCase())) {
+      return res.status(403).json({
+        success: false,
+        error: 'Not allowed to add societies',
+      });
+    }
+
+    const { error } = await supabaseAdmin
+      .from('societies')
+      .insert({
+        name,
+        description: description || null,
+        category,
+        logo_url: logo_url || null,
+        instagram_url: instagram_url || null,
+        linkedin_url: linkedin_url || null,
+      });
+
+    if (error) {
+      return res.status(400).json({
+        success: false,
+        error: error.message || 'Failed to add society',
+      });
+    }
+
+    return res.json({
+      success: true,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error occurred',
+    });
+  }
+});
+
+app.post('/api/society-image-upload-url', async (req, res) => {
+  try {
+    const { fileName, contentType } = req.body || {};
+    const ext = String(fileName || 'image.png').split('.').pop() || 'png';
+    const path = `society-${Date.now()}-${Math.random().toString(36).slice(2)}.${ext.toLowerCase()}`;
+    const { data: buckets } = await supabaseAdmin.storage.listBuckets();
+    const exists = (buckets || []).some((b) => b.name === 'society-images');
+    if (!exists) {
+      await supabaseAdmin.storage.createBucket('society-images', { public: true });
+    }
+    const { data, error } = await supabaseAdmin.storage.from('society-images').createSignedUploadUrl(path);
+    if (error || !data?.signedUrl) {
+      return res.status(400).json({
+        success: false,
+        error: error?.message || 'Failed to create signed upload URL',
+      });
+    }
+    const publicData = supabaseAdmin.storage.from('society-images').getPublicUrl(path);
+    return res.json({
+      success: true,
+      signedUrl: data.signedUrl,
+      path,
+      publicUrl: publicData.data.publicUrl,
+      contentType: contentType || 'application/octet-stream',
     });
   } catch (error) {
     return res.status(500).json({

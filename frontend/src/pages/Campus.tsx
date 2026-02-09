@@ -25,12 +25,10 @@ import {
   Users,
   Calendar,
   MapPin,
-  ExternalLink,
   CalendarPlus,
   Loader2,
   Instagram,
   Linkedin,
-  Pin,
   Sparkles,
   Plus,
   Edit,
@@ -38,6 +36,16 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+
+type AnnRow = Announcement & {
+  start_time?: string;
+  end_time?: string;
+  event_date?: string;
+  venue?: string;
+  short_desc?: string;
+  full_details?: string;
+  image_url?: string;
+};
 
 export default function Campus() {
   const { user, profile, refreshProfile } = useAuth();
@@ -83,12 +91,15 @@ export default function Campus() {
       setAnnouncements([]);
     } else if (announcementsData) {
       const now = new Date();
-      const active = (announcementsData as Announcement[]).filter((a) => {
+      const active = (announcementsData as AnnRow[]).filter((a) => {
         if (!a.event_date) return true;
-        const [y, m, d] = String((a as any).event_date).split('-').map((s: string) => parseInt(s, 10));
-        const timeStr = (a as any).end_time || (a as any).start_time || '23:59';
-        const [hh, mm] = String(timeStr).split(':').map((s: string) => parseInt(s, 10));
-        const end = new Date(y, m - 1, d, hh || 0, mm || 0);
+        const timeStr = a.end_time || a.start_time || '23:59';
+        let end = new Date(`${String(a.event_date)}T${timeStr}`);
+        if (isNaN(end.getTime())) {
+          const [y, m, d] = String(a.event_date).split('-').map((s: string) => parseInt(s, 10));
+          const [hh, mm] = String(timeStr).split(':').map((s: string) => parseInt(s, 10));
+          end = new Date(y, (m || 1) - 1, d || 1, hh || 0, mm || 0);
+        }
         return end.getTime() >= now.getTime();
       });
       setAnnouncements(active);
@@ -119,7 +130,7 @@ export default function Campus() {
     const { error } = await supabase.from('user_events').insert({
       user_id: user!.id,
       title: announcement.title,
-      description: [announcement.short_desc, announcement.full_details].filter(Boolean).join('\n\n'),
+      description: [(announcement as AnnRow).short_desc, (announcement as AnnRow).full_details].filter(Boolean).join('\n\n'),
       event_date: announcement.event_date,
       event_type: 'campus',
       source_announcement_id: announcement.id,
@@ -205,12 +216,6 @@ export default function Campus() {
           <div className="flex items-start justify-between gap-3">
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-2">
-                {announcement.is_pinned && (
-                  <Badge variant="secondary" className="gap-1">
-                    <Pin className="w-3 h-3" />
-                    Pinned
-                  </Badge>
-                )}
                 {announcement.society && (
                   <Badge variant="outline">{announcement.society.name}</Badge>
                 )}
@@ -222,10 +227,10 @@ export default function Campus() {
             </div>
             {canPost && (
               <div className="flex items-center gap-2">
-                <Button variant="outline" size="icon" onClick={() => openEditAnnouncement(announcement)}>
+                <Button variant="outline" size="icon" className="hover:bg-primary/10 hover:text-primary" onClick={() => openEditAnnouncement(announcement)}>
                   <Edit className="w-4 h-4" />
                 </Button>
-                <Button variant="outline" size="icon" onClick={() => handleDeleteAnnouncement(announcement.id)}>
+                <Button variant="outline" size="icon" className="hover:bg-primary/10 hover:text-primary" onClick={() => handleDeleteAnnouncement(announcement.id)}>
                   <Trash2 className="w-4 h-4" />
                 </Button>
               </div>
@@ -235,35 +240,27 @@ export default function Campus() {
 
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground line-clamp-3">
-            {announcement.short_desc}
+            {(announcement as AnnRow).short_desc}
           </p>
 
-          {announcement.image_url && (
-            <img
-              src={announcement.image_url}
-              alt={announcement.title}
-              className="w-full h-48 object-cover rounded-lg"
-            />
-          )}
-
-          {(announcement.event_date || announcement.venue) && (
+          {(announcement.event_date || (announcement as AnnRow).venue) && (
             <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
               {announcement.event_date && (
                 <span className="flex items-center gap-1">
                   <Calendar className="w-4 h-4" />
-                  {format(new Date(`${announcement.event_date}T${announcement.start_time || '00:00'}`), 'MMM d, yyyy')}
-                  {announcement.start_time && (
+                  {format(new Date(`${(announcement as AnnRow).event_date}T${(announcement as AnnRow).start_time || '00:00'}`), 'MMM d, yyyy')}
+                  {(announcement as AnnRow).start_time && (
                     <span className="ml-1">
-                      {announcement.start_time}
-                      {announcement.end_time ? ` - ${announcement.end_time}` : ''}
+                     {(announcement as AnnRow).start_time}
+                      {(announcement as AnnRow).end_time ? ` - ${(announcement as AnnRow).end_time}` : ''}
                     </span>
                   )}
                 </span>
               )}
-              {announcement.venue && (
+              {(announcement as AnnRow).venue && (
                 <span className="flex items-center gap-1">
                   <MapPin className="w-4 h-4" />
-                  {announcement.venue}
+                  {(announcement as AnnRow).venue}
                 </span>
               )}
             </div>
@@ -273,6 +270,7 @@ export default function Campus() {
             <Button
               variant="outline"
               size="sm"
+              className="hover:bg-primary/10 hover:text-primary"
               onClick={() => addToCalendar(announcement)}
             >
               <CalendarPlus className="w-4 h-4 mr-2" />
@@ -280,7 +278,7 @@ export default function Campus() {
             </Button>
           )}
           <div className="flex justify-end">
-            <Button variant="ghost" size="sm" onClick={() => openViewAnnouncement(announcement)}>
+            <Button variant="ghost" size="sm" className="hover:bg-primary/10 hover:text-primary" onClick={() => openViewAnnouncement(announcement)}>
               View more
             </Button>
           </div>
@@ -320,12 +318,12 @@ export default function Campus() {
           )}
           <div className="flex gap-2">
             {society.instagram_url && (
-              <Button variant="ghost" size="icon" onClick={() => window.open(society.instagram_url, '_blank')}>
+              <Button variant="ghost" size="icon" className="hover:bg-primary/10 hover:text-primary" onClick={() => window.open(society.instagram_url, '_blank')}>
                 <Instagram className="w-4 h-4" />
               </Button>
             )}
             {society.linkedin_url && (
-              <Button variant="ghost" size="icon" onClick={() => window.open(society.linkedin_url, '_blank')}>
+              <Button variant="ghost" size="icon" className="hover:bg-primary/10 hover:text-primary" onClick={() => window.open(society.linkedin_url, '_blank')}>
                 <Linkedin className="w-4 h-4" />
               </Button>
             )}
@@ -418,7 +416,7 @@ export default function Campus() {
       return;
     }
     const tagsArr = annForm.tags.split(',').map(t => t.trim()).filter(Boolean);
-    const { error } = await supabase.from('announcements').insert({
+    const payload = {
       title: annForm.title,
       society_id: annForm.societyId,
       event_date: annForm.date,
@@ -430,9 +428,10 @@ export default function Campus() {
       registration_url: annForm.regLink || null,
       contact_info: annForm.contact || null,
       tags: tagsArr,
-      created_by: user?.id || null,
-    });
+    } as any;
+    const { error } = await supabase.from('announcements').insert(payload);
     if (error) {
+
       toast.error(error.message || 'Failed to create announcement');
       return;
     }
@@ -475,43 +474,70 @@ export default function Campus() {
   };
 
   const uploadSocietyImage = async (file: File): Promise<string | null> => {
-    const path = `society-${Date.now()}-${Math.random().toString(36).slice(2)}.${file.name.split('.').pop()}`;
-    const { error } = await supabase.storage.from('society-images').upload(path, file, { upsert: false });
-    if (error) {
-      toast.error(error.message || 'Image upload failed');
+    try {
+      const resp = await fetch(`${backendUrl}/api/society-image-upload-url`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fileName: file.name, contentType: file.type }),
+      });
+      const data = await resp.json();
+      if (!resp.ok || !data?.signedUrl) {
+        throw new Error(data?.error || 'Failed to get upload URL');
+      }
+      const put = await fetch(data.signedUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': file.type || 'application/octet-stream' },
+        body: file,
+      });
+      if (!put.ok) {
+        throw new Error('Upload failed');
+      }
+      return data.publicUrl || null;
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Image upload failed');
       return null;
     }
-    const { data } = supabase.storage.from('society-images').getPublicUrl(path);
-    return data.publicUrl || null;
   };
 
   const handleAddSociety = async () => {
-    if (!socForm.name.trim() || !socForm.purpose.trim() || !socForm.category || !socForm.imageFile) {
-      toast.error('Please fill all required fields and upload image');
+    if (!socForm.name.trim() || !socForm.purpose.trim() || !socForm.category) {
+      toast.error('Please fill all required fields');
       return;
     }
     let logoUrl: string | null = null;
     if (socForm.imageFile) {
       const url = await uploadSocietyImage(socForm.imageFile);
-      if (!url) return;
-      logoUrl = url;
+      if (!url) {
+        toast.error('Image upload failed');
+      } else {
+        logoUrl = url;
+      }
     }
-    const { error } = await supabase.from('societies').insert({
-      name: socForm.name,
-      description: socForm.purpose,
-      category: socForm.category,
-      logo_url: logoUrl,
-      instagram_url: socForm.instagram || null,
-      linkedin_url: socForm.linkedin || null,
-    });
-    if (error) {
-      toast.error(error.message || 'Failed to add society');
-      return;
+    try {
+      const resp = await fetch(`${backendUrl}/api/add-society`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userEmail: user?.email || '',
+          name: socForm.name,
+          description: socForm.purpose,
+          category: socForm.category,
+          logo_url: logoUrl,
+          instagram_url: socForm.instagram || null,
+          linkedin_url: socForm.linkedin || null,
+        }),
+      });
+      const data = await resp.json();
+      if (!resp.ok || !data?.success) {
+        throw new Error(data?.error || 'Failed to add society');
+      }
+      toast.success('Society added');
+      resetSocForm();
+      closeSocietyForm();
+      fetchData();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to add society');
     }
-    toast.success('Society added');
-    resetSocForm();
-    closeSocietyForm();
-    fetchData();
   };
 
   return (
@@ -715,38 +741,35 @@ export default function Campus() {
             {viewAnnouncement?.society && (
               <Badge variant="outline">{viewAnnouncement.society.name}</Badge>
             )}
-            {viewAnnouncement?.venue && (
+            {(viewAnnouncement as AnnRow)?.venue && (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <MapPin className="w-4 h-4" />
-                {viewAnnouncement.venue}
+                {(viewAnnouncement as AnnRow).venue}
               </div>
             )}
             <div className="space-y-2">
-              {viewAnnouncement?.short_desc && (
+              {(viewAnnouncement as AnnRow)?.short_desc && (
+
                 <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                  {viewAnnouncement.short_desc}
+                  {(viewAnnouncement as AnnRow).short_desc}
                 </p>
               )}
-              {viewAnnouncement?.full_details && (
+              {(viewAnnouncement as AnnRow)?.full_details && (
                 <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                  {viewAnnouncement.full_details}
+                  {(viewAnnouncement as AnnRow).full_details}
                 </p>
               )}
             </div>
             {viewAnnouncement?.image_url && (
-              <img src={viewAnnouncement.image_url} alt="" className="w-full h-48 object-cover rounded-lg" />
+              <div className="w-full h-48 rounded-lg bg-muted flex items-center justify-center text-muted-foreground">
+                No image available
+              </div>
             )}
             {viewAnnouncement?.event_date && (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Calendar className="w-4 h-4" />
                 {format(new Date(viewAnnouncement.event_date), 'MMM d, yyyy h:mm a')}
               </div>
-            )}
-            {viewAnnouncement?.image_url && (
-              <a href={viewAnnouncement.image_url} target="_blank" rel="noreferrer" className="text-sm text-primary flex items-center gap-1">
-                <ExternalLink className="w-4 h-4" />
-                View image
-              </a>
             )}
           </div>
         </DialogContent>
