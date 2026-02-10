@@ -22,6 +22,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const forceLightTheme = () => {
+    try {
+      localStorage.setItem('vite-ui-theme', 'light');
+      document.documentElement.classList.remove('dark');
+      document.documentElement.classList.add('light');
+    } catch {
+      // Ignore storage access issues (private mode, disabled storage, etc.)
+    }
+  };
+
   // Fetch user profile from database (create one if missing)
   const fetchProfile = async (user: User) => {
     const { data, error } = await supabase
@@ -74,6 +84,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        forceLightTheme();
         setSession(session);
         setUser(session?.user ?? null);
 
@@ -93,6 +104,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // THEN check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
+      forceLightTheme();
       setSession(session);
       setUser(session?.user ?? null);
 
@@ -136,6 +148,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signOut = async () => {
+    forceLightTheme();
     await supabase.auth.signOut();
     setProfile(null);
   };

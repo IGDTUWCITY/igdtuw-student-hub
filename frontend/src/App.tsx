@@ -20,6 +20,7 @@ import Campus from "./pages/Campus";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import CalendarPage from "./pages/CalendarPage";
+import Landing from "./pages/Landing";
 
 const queryClient = new QueryClient();
 
@@ -42,7 +43,7 @@ const App = () => {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme" attribute="class">
+      <ThemeProvider defaultTheme="light" storageKey="vite-ui-theme" attribute="class">
         <AuthProvider>
           <TooltipProvider>
             <Toaster />
@@ -51,7 +52,8 @@ const App = () => {
               <RouteTracker />
               <Routes>
                 {/* Public routes */}
-                <Route path="/" element={<Index />} />
+                <Route path="/" element={<Landing />} />
+                <Route path="/auth" element={<Index />} />
 
                 {/* Protected routes with sidebar layout */}
                 <Route

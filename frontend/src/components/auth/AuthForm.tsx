@@ -46,7 +46,8 @@ export function AuthForm() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-mesh bg-background p-4">
+    <div className="min-h-screen hero-campus-bg p-4">
+      <div className="min-h-screen w-full flex items-center justify-center bg-black/35">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -179,6 +180,7 @@ export function AuthForm() {
           </CardContent>
         </Card>
       </motion.div>
+      </div>
     </div>
   );
 }
