@@ -86,6 +86,7 @@ export interface Society {
   category?: string;
   instagram_url?: string;
   linkedin_url?: string;
+  created_by?: string;
   created_at: string;
 }
 
@@ -98,6 +99,7 @@ export interface Announcement {
   is_pinned: boolean;
   event_date?: string;
   event_location?: string;
+  created_by?: string;
   created_at: string;
   society?: Society;
 }

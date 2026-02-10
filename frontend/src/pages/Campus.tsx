@@ -225,7 +225,7 @@ export default function Campus() {
                 {format(new Date(announcement.created_at), 'MMMM d, yyyy')}
               </CardDescription>
             </div>
-            {canPost && (
+            {canPost && (announcement as any)?.created_by === user?.id && (
               <div className="flex items-center gap-2">
                 <Button variant="outline" size="icon" className="hover:bg-primary/10 hover:text-primary" onClick={() => openEditAnnouncement(announcement)}>
                   <Edit className="w-4 h-4" />
@@ -308,6 +308,16 @@ export default function Campus() {
                 <Badge variant="outline" className="mt-1">{society.category}</Badge>
               )}
             </div>
+            {canPost && (society as any).created_by === user?.id && (
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="icon" className="hover:bg-primary/10 hover:text-primary" onClick={() => openEditSociety(society)}>
+                  <Edit className="w-4 h-4" />
+                </Button>
+                <Button variant="outline" size="icon" className="hover:bg-primary/10 hover:text-primary" onClick={() => handleDeleteSociety(society.id)}>
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              </div>
+            )}
           </div>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -341,8 +351,42 @@ export default function Campus() {
   const [editAnnouncement, setEditAnnouncement] = useState<Announcement | null>(null);
   const openCreate = () => setCreateOpen(true);
   const closeCreate = () => setCreateOpen(false);
-  const openEditAnnouncement = (a: Announcement) => setEditAnnouncement(a);
+  const openEditAnnouncement = (a: Announcement) => {
+    setEditAnnouncement(a);
+    const ann = a as unknown as AnnRow;
+    const dateStr = ann.event_date ? format(new Date(ann.event_date), 'yyyy-MM-dd') : '';
+    setAnnForm({
+      title: ann.title || '',
+      societyId: ann.society_id || '',
+      date: dateStr,
+      startTime: ann.start_time || '',
+      endTime: ann.end_time || '',
+      venue: ann.venue || '',
+      shortDesc: ann.short_desc || '',
+      fullDetails: ann.full_details || '',
+      regLink: (ann as any).registration_url || '',
+      contact: (ann as any).contact_info || '',
+      tags: Array.isArray((ann as any).tags) ? (ann as any).tags.join(', ') : '',
+    });
+  };
   const closeEditAnnouncement = () => setEditAnnouncement(null);
+  const [editSociety, setEditSociety] = useState<Society | null>(null);
+  const openEditSociety = (s: Society) => {
+    setEditSociety(s);
+    setSocietyFormOpen(true);
+    setSocForm({
+      name: s.name || '',
+      purpose: s.description || '',
+      category: s.category || '',
+      imageFile: null,
+      instagram: s.instagram_url || '',
+      linkedin: s.linkedin_url || '',
+    });
+  };
+  const closeEditSociety = () => {
+    setEditSociety(null);
+    closeSocietyForm();
+  };
 
   const [societyFormOpen, setSocietyFormOpen] = useState(false);
   const openSocietyForm = () => setSocietyFormOpen(true);
@@ -428,6 +472,7 @@ export default function Campus() {
       registration_url: annForm.regLink || null,
       contact_info: annForm.contact || null,
       tags: tagsArr,
+      created_by: user?.id || null,
     } as any;
     const { error } = await supabase.from('announcements').insert(payload);
     if (error) {
@@ -519,6 +564,7 @@ export default function Campus() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           userEmail: user?.email || '',
+          userId: user?.id || '',
           name: socForm.name,
           description: socForm.purpose,
           category: socForm.category,
@@ -538,6 +584,50 @@ export default function Campus() {
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to add society');
     }
+  };
+
+  const handleUpdateSociety = async () => {
+    if (!editSociety) return;
+    if (!socForm.name.trim() || !socForm.category) {
+      toast.error('Please fill required fields');
+      return;
+    }
+    let logoUrl: string | null | undefined = editSociety.logo_url || null;
+    if (socForm.imageFile) {
+      const url = await uploadSocietyImage(socForm.imageFile);
+      if (!url) {
+        toast.error('Image upload failed');
+        return;
+      }
+      logoUrl = url;
+    }
+    const { error } = await supabase.from('societies').update({
+      name: socForm.name,
+      description: socForm.purpose || null,
+      category: socForm.category,
+      logo_url: logoUrl || null,
+      instagram_url: socForm.instagram || null,
+      linkedin_url: socForm.linkedin || null,
+    }).eq('id', editSociety.id);
+    if (error) {
+      toast.error(error.message || 'Failed to update society');
+      return;
+    }
+    toast.success('Society updated');
+    closeEditSociety();
+    resetSocForm();
+    fetchData();
+  };
+
+  const handleDeleteSociety = async (id: string) => {
+    const { error } = await supabase.from('societies').delete().eq('id', id);
+    if (error) {
+      toast.error(error.message || 'Failed to delete society');
+      return;
+    }
+    toast.success('Society deleted');
+    if (editSociety?.id === id) closeEditSociety();
+    fetchData();
   };
 
   return (
@@ -839,7 +929,7 @@ export default function Campus() {
       <Sheet open={societyFormOpen} onOpenChange={(o) => !o ? closeSocietyForm() : void 0}>
         <SheetContent side="right" className="sm:max-w-md">
           <SheetHeader>
-            <SheetTitle>Add Society</SheetTitle>
+            <SheetTitle>{editSociety ? 'Edit Society' : 'Add Society'}</SheetTitle>
           </SheetHeader>
           <div className="space-y-4 mt-4">
             <Input placeholder="Society name" value={socForm.name} onChange={(e) => setSocForm({ ...socForm, name: e.target.value })} />
@@ -860,8 +950,17 @@ export default function Campus() {
             <Input placeholder="Instagram link (optional)" value={socForm.instagram} onChange={(e) => setSocForm({ ...socForm, instagram: e.target.value })} />
             <Input placeholder="LinkedIn link (optional)" value={socForm.linkedin} onChange={(e) => setSocForm({ ...socForm, linkedin: e.target.value })} />
             <div className="flex gap-2">
-              <Button onClick={handleAddSociety}>Add</Button>
-              <Button variant="outline" onClick={() => { resetSocForm(); closeSocietyForm(); }}>Cancel</Button>
+              {editSociety ? (
+                <>
+                  <Button onClick={handleUpdateSociety}>Save</Button>
+                  <Button variant="outline" onClick={() => { resetSocForm(); closeEditSociety(); }}>Cancel</Button>
+                </>
+              ) : (
+                <>
+                  <Button onClick={handleAddSociety}>Add</Button>
+                  <Button variant="outline" onClick={() => { resetSocForm(); closeSocietyForm(); }}>Cancel</Button>
+                </>
+              )}
             </div>
           </div>
         </SheetContent>

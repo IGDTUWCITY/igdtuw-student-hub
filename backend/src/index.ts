@@ -66,6 +66,7 @@ app.post('/api/add-society', async (req, res) => {
   try {
     const {
       userEmail,
+      userId,
       name,
       description,
       category,
@@ -91,6 +92,13 @@ app.post('/api/add-society', async (req, res) => {
       });
     }
 
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        error: 'userId is required to set ownership',
+      });
+    }
+
     const { error } = await supabaseAdmin
       .from('societies')
       .insert({
@@ -100,6 +108,7 @@ app.post('/api/add-society', async (req, res) => {
         logo_url: logo_url || null,
         instagram_url: instagram_url || null,
         linkedin_url: linkedin_url || null,
+        created_by: userId,
       });
 
     if (error) {
