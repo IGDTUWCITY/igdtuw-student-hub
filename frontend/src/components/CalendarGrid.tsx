@@ -118,6 +118,10 @@ export function CalendarGrid({ events, onEventClick, loading }: CalendarGridProp
   >
     Calendar of Algorithms
   </h1>
+
+  <h2 className="text-sm md:text-base text-muted-foreground mt-2 max-w-2xl mx-auto">
+    Stay updated with upcoming contests and events from various platforms. Filter by platform and never miss a challenge!
+  </h2>
 </div>
 
 
