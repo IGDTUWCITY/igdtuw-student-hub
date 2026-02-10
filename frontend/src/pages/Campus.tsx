@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -41,10 +41,31 @@ type AnnRow = Announcement & {
   start_time?: string;
   end_time?: string;
   event_date?: string;
+  end_date?: string;
   venue?: string;
   short_desc?: string;
   full_details?: string;
   image_url?: string;
+  registration_url?: string;
+  tags?: string[];
+};
+
+const isSchemaColumnError = (message?: string) => {
+  if (!message) return false;
+  const m = message.toLowerCase();
+  return m.includes('schema cache') && (m.includes('content') || m.includes('event_location') || m.includes('end_date'));
+};
+
+const formatDateOnly = (value?: string | null) => {
+  if (!value) return '';
+  const [y, m, d] = value.split('-').map((n) => parseInt(n, 10));
+  if (!y || !m || !d) return value;
+  return format(new Date(y, m - 1, d), 'MMM d, yyyy');
+};
+
+const toDateInputValue = (value?: string | null) => {
+  if (!value) return '';
+  return String(value).slice(0, 10);
 };
 
 export default function Campus() {
@@ -58,20 +79,35 @@ export default function Campus() {
   const [interestInput, setInterestInput] = useState('');
   const [savingInterest, setSavingInterest] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [canPost, setCanPost] = useState(false);
   const [activeTab, setActiveTab] = useState(() => {
     return sessionStorage.getItem('campusActiveTab') || 'announcements';
   });
-
-  const PR_ALLOWED_EMAILS = useMemo(() => new Set<string>([
-    'chadhaaarohi@gmail.com',
-  ].map(e => e.toLowerCase())), []);
-  const canPost = !!user?.email && PR_ALLOWED_EMAILS.has(user.email.toLowerCase());
 
   const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
 
   useEffect(() => {
     fetchData();
   }, []);
+
+  useEffect(() => {
+    const syncCanPost = async () => {
+      if (!user) {
+        setCanPost(false);
+        return;
+      }
+
+      const { data, error } = await supabase.rpc('is_pr_allowlisted');
+      if (error) {
+        setCanPost(false);
+        return;
+      }
+
+      setCanPost(Boolean(data));
+    };
+
+    syncCanPost();
+  }, [user?.id]);
 
   useEffect(() => {
     sessionStorage.setItem('campusActiveTab', activeTab);
@@ -94,9 +130,10 @@ export default function Campus() {
       const active = (announcementsData as AnnRow[]).filter((a) => {
         if (!a.event_date) return true;
         const timeStr = a.end_time || a.start_time || '23:59';
-        let end = new Date(`${String(a.event_date)}T${timeStr}`);
+        const endDateRaw = a.end_date || a.event_date;
+        let end = new Date(`${String(endDateRaw)}T${timeStr}`);
         if (isNaN(end.getTime())) {
-          const [y, m, d] = String(a.event_date).split('-').map((s: string) => parseInt(s, 10));
+          const [y, m, d] = String(endDateRaw).split('-').map((s: string) => parseInt(s, 10));
           const [hh, mm] = String(timeStr).split(':').map((s: string) => parseInt(s, 10));
           end = new Date(y, (m || 1) - 1, d || 1, hh || 0, mm || 0);
         }
@@ -354,11 +391,12 @@ export default function Campus() {
   const openEditAnnouncement = (a: Announcement) => {
     setEditAnnouncement(a);
     const ann = a as unknown as AnnRow;
-    const dateStr = ann.event_date ? format(new Date(ann.event_date), 'yyyy-MM-dd') : '';
+    const dateStr = toDateInputValue(ann.event_date);
     setAnnForm({
       title: ann.title || '',
       societyId: ann.society_id || '',
       date: dateStr,
+      endDate: toDateInputValue(ann.end_date || ann.event_date),
       startTime: ann.start_time || '',
       endTime: ann.end_time || '',
       venue: ann.venue || '',
@@ -396,6 +434,7 @@ export default function Campus() {
     title: '',
     societyId: '',
     date: '',
+    endDate: '',
     startTime: '',
     endTime: '',
     venue: '',
@@ -419,6 +458,7 @@ export default function Campus() {
     title: '',
     societyId: '',
     date: '',
+    endDate: '',
     startTime: '',
     endTime: '',
     venue: '',
@@ -449,34 +489,44 @@ export default function Campus() {
   };
 
   const handleCreateAnnouncement = async () => {
-    if (!annForm.title.trim() || !annForm.societyId || !annForm.date || !annForm.startTime || !annForm.endTime || !annForm.venue.trim() || !annForm.shortDesc.trim()) {
+    if (!annForm.title.trim() || !annForm.societyId || !annForm.date || !annForm.endDate || !annForm.startTime || !annForm.endTime || !annForm.venue.trim() || !annForm.shortDesc.trim()) {
       toast.error('Please fill all required fields');
       return;
     }
     const start = new Date(`${annForm.date}T${annForm.startTime}`);
-    const end = new Date(`${annForm.date}T${annForm.endTime}`);
+    const end = new Date(`${annForm.endDate}T${annForm.endTime}`);
     if (end <= start) {
-      toast.error('End time must be after start time');
+      toast.error('End date/time must be after start date/time');
       return;
     }
     const tagsArr = annForm.tags.split(',').map(t => t.trim()).filter(Boolean);
+    const normalizedFullDetails = annForm.fullDetails.trim();
+    const normalizedShortDesc = annForm.shortDesc.trim();
     const payload = {
       title: annForm.title,
       society_id: annForm.societyId,
       event_date: annForm.date,
+      end_date: annForm.endDate,
       start_time: annForm.startTime,
       end_time: annForm.endTime,
       venue: annForm.venue,
-      short_desc: annForm.shortDesc,
-      full_details: annForm.fullDetails || '',
+      short_desc: normalizedShortDesc,
+      full_details: normalizedFullDetails || '',
       registration_url: annForm.regLink || null,
       contact_info: annForm.contact || null,
       tags: tagsArr,
       created_by: user?.id || null,
     } as any;
-    const { error } = await supabase.from('announcements').insert(payload);
+    let { error } = await supabase.from('announcements').insert(payload);
+    if (error && isSchemaColumnError(error.message)) {
+      const m = error.message.toLowerCase();
+      const retryPayload: any = { ...payload };
+      if (m.includes('end_date')) delete retryPayload.end_date;
+      if (m.includes('content')) retryPayload.content = normalizedFullDetails || normalizedShortDesc;
+      if (m.includes('event_location')) retryPayload.event_location = annForm.venue;
+      ({ error } = await supabase.from('announcements').insert(retryPayload));
+    }
     if (error) {
-
       toast.error(error.message || 'Failed to create announcement');
       return;
     }
@@ -488,26 +538,42 @@ export default function Campus() {
 
   const handleUpdateAnnouncement = async () => {
     if (!editAnnouncement) return;
-    if (!annForm.title.trim() || !annForm.societyId || !annForm.date || !annForm.startTime || !annForm.endTime || !annForm.venue.trim() || !annForm.shortDesc.trim()) {
+    if (!annForm.title.trim() || !annForm.societyId || !annForm.date || !annForm.endDate || !annForm.startTime || !annForm.endTime || !annForm.venue.trim() || !annForm.shortDesc.trim()) {
       toast.error('Please fill all required fields');
       return;
     }
     const start = new Date(`${annForm.date}T${annForm.startTime}`);
-    const end = new Date(`${annForm.date}T${annForm.endTime}`);
+    const end = new Date(`${annForm.endDate}T${annForm.endTime}`);
     if (end <= start) {
-      toast.error('End time must be after start time');
+      toast.error('End date/time must be after start date/time');
       return;
     }
-    const { error } = await supabase.from('announcements').update({
+    const normalizedFullDetails = annForm.fullDetails.trim();
+    const normalizedShortDesc = annForm.shortDesc.trim();
+    const tagsArr = annForm.tags.split(',').map(t => t.trim()).filter(Boolean);
+    const updatePayload = {
       title: annForm.title,
       society_id: annForm.societyId,
       event_date: annForm.date,
+      end_date: annForm.endDate,
       start_time: annForm.startTime,
       end_time: annForm.endTime,
       venue: annForm.venue,
-      short_desc: annForm.shortDesc,
-      full_details: annForm.fullDetails || '',
-    }).eq('id', editAnnouncement.id);
+      short_desc: normalizedShortDesc,
+      full_details: normalizedFullDetails || '',
+      registration_url: annForm.regLink || null,
+      contact_info: annForm.contact || null,
+      tags: tagsArr,
+    } as any;
+    let { error } = await supabase.from('announcements').update(updatePayload).eq('id', editAnnouncement.id);
+    if (error && isSchemaColumnError(error.message)) {
+      const m = error.message.toLowerCase();
+      const retryPayload: any = { ...updatePayload };
+      if (m.includes('end_date')) delete retryPayload.end_date;
+      if (m.includes('content')) retryPayload.content = normalizedFullDetails || normalizedShortDesc;
+      if (m.includes('event_location')) retryPayload.event_location = annForm.venue;
+      ({ error } = await supabase.from('announcements').update(retryPayload).eq('id', editAnnouncement.id));
+    }
     if (error) {
       toast.error(error.message || 'Failed to update');
       return;
@@ -563,7 +629,6 @@ export default function Campus() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          userEmail: user?.email || '',
           userId: user?.id || '',
           name: socForm.name,
           description: socForm.purpose,
@@ -855,10 +920,40 @@ export default function Campus() {
                 No image available
               </div>
             )}
-            {viewAnnouncement?.event_date && (
+            {viewAnnouncement && (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Calendar className="w-4 h-4" />
-                {format(new Date(viewAnnouncement.event_date), 'MMM d, yyyy h:mm a')}
+                Posted on {format(new Date(viewAnnouncement.created_at), 'MMM d, yyyy')}
+              </div>
+            )}
+            {(viewAnnouncement as AnnRow)?.event_date && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Calendar className="w-4 h-4" />
+                Event: {formatDateOnly((viewAnnouncement as AnnRow).event_date)}
+                {(viewAnnouncement as AnnRow).end_date && (viewAnnouncement as AnnRow).end_date !== (viewAnnouncement as AnnRow).event_date
+                  ? ` - ${formatDateOnly((viewAnnouncement as AnnRow).end_date)}`
+                  : ''}
+                {(viewAnnouncement as AnnRow).start_time ? `, ${(viewAnnouncement as AnnRow).start_time}` : ''}
+                {(viewAnnouncement as AnnRow).end_time ? ` - ${(viewAnnouncement as AnnRow).end_time}` : ''}
+              </div>
+            )}
+            {(viewAnnouncement as AnnRow)?.registration_url && (
+              <div className="text-sm">
+                <a
+                  className="text-primary underline underline-offset-2 break-all"
+                  href={(viewAnnouncement as AnnRow).registration_url}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Registration link
+                </a>
+              </div>
+            )}
+            {Array.isArray((viewAnnouncement as AnnRow)?.tags) && ((viewAnnouncement as AnnRow).tags?.length || 0) > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {((viewAnnouncement as AnnRow).tags || []).map((tag) => (
+                  <Badge key={tag} variant="secondary">{tag}</Badge>
+                ))}
               </div>
             )}
           </div>
@@ -878,7 +973,16 @@ export default function Campus() {
                 {societies.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
               </SelectContent>
             </Select>
-            <Input type="date" value={annForm.date} onChange={(e) => setAnnForm({ ...annForm, date: e.target.value })} />
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Start date</Label>
+                <Input type="date" value={annForm.date} onChange={(e) => setAnnForm({ ...annForm, date: e.target.value })} />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">End date</Label>
+                <Input type="date" value={annForm.endDate} onChange={(e) => setAnnForm({ ...annForm, endDate: e.target.value })} />
+              </div>
+            </div>
             <div className="grid grid-cols-2 gap-2">
               <Input type="time" value={annForm.startTime} onChange={(e) => setAnnForm({ ...annForm, startTime: e.target.value })} />
               <Input type="time" value={annForm.endTime} onChange={(e) => setAnnForm({ ...annForm, endTime: e.target.value })} />
@@ -910,7 +1014,16 @@ export default function Campus() {
                 {societies.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
               </SelectContent>
             </Select>
-            <Input type="date" value={annForm.date} onChange={(e) => setAnnForm({ ...annForm, date: e.target.value })} />
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Start date</Label>
+                <Input type="date" value={annForm.date} onChange={(e) => setAnnForm({ ...annForm, date: e.target.value })} />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">End date</Label>
+                <Input type="date" value={annForm.endDate} onChange={(e) => setAnnForm({ ...annForm, endDate: e.target.value })} />
+              </div>
+            </div>
             <div className="grid grid-cols-2 gap-2">
               <Input type="time" value={annForm.startTime} onChange={(e) => setAnnForm({ ...annForm, startTime: e.target.value })} />
               <Input type="time" value={annForm.endTime} onChange={(e) => setAnnForm({ ...annForm, endTime: e.target.value })} />
@@ -918,6 +1031,9 @@ export default function Campus() {
             <Input placeholder="Venue" value={annForm.venue} onChange={(e) => setAnnForm({ ...annForm, venue: e.target.value })} />
             <Textarea placeholder="Short description" value={annForm.shortDesc} onChange={(e) => setAnnForm({ ...annForm, shortDesc: e.target.value })} />
             <Textarea placeholder="Full details" value={annForm.fullDetails} onChange={(e) => setAnnForm({ ...annForm, fullDetails: e.target.value })} />
+            <Input placeholder="Registration link (optional)" value={annForm.regLink} onChange={(e) => setAnnForm({ ...annForm, regLink: e.target.value })} />
+            <Input placeholder="Contact info (optional)" value={annForm.contact} onChange={(e) => setAnnForm({ ...annForm, contact: e.target.value })} />
+            <Input placeholder="Tags (comma separated)" value={annForm.tags} onChange={(e) => setAnnForm({ ...annForm, tags: e.target.value })} />
             <div className="flex gap-2">
               <Button onClick={handleUpdateAnnouncement}>Save</Button>
               <Button variant="outline" onClick={() => { resetAnnForm(); closeEditAnnouncement(); }}>Cancel</Button>

@@ -65,7 +65,6 @@ app.get('/api/check-gemini', async (req, res) => {
 app.post('/api/add-society', async (req, res) => {
   try {
     const {
-      userEmail,
       userId,
       name,
       description,
@@ -75,20 +74,10 @@ app.post('/api/add-society', async (req, res) => {
       linkedin_url,
     } = req.body || {};
 
-    if (!userEmail || !name || !category) {
+    if (!name || !category) {
       return res.status(400).json({
         success: false,
-        error: 'userEmail, name and category are required',
-      });
-    }
-
-    const allowlist = new Set<string>([
-      'chadhaaarohi@gmail.com',
-    ].map((e) => e.toLowerCase()));
-    if (!allowlist.has(String(userEmail).toLowerCase())) {
-      return res.status(403).json({
-        success: false,
-        error: 'Not allowed to add societies',
+        error: 'name and category are required',
       });
     }
 
@@ -96,6 +85,36 @@ app.post('/api/add-society', async (req, res) => {
       return res.status(400).json({
         success: false,
         error: 'userId is required to set ownership',
+      });
+    }
+
+    const { data: userData, error: userErr } = await supabaseAdmin.auth.admin.getUserById(userId);
+    if (userErr || !userData?.user?.email) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid user',
+      });
+    }
+
+    const email = userData.user.email.toLowerCase();
+    const { data: prHead, error: prHeadErr } = await supabaseAdmin
+      .from('pr_heads')
+      .select('email, is_active')
+      .eq('email', email)
+      .eq('is_active', true)
+      .maybeSingle();
+
+    if (prHeadErr) {
+      return res.status(500).json({
+        success: false,
+        error: prHeadErr.message || 'Failed to validate permissions',
+      });
+    }
+
+    if (!prHead) {
+      return res.status(403).json({
+        success: false,
+        error: 'Not allowed to add societies',
       });
     }
 
