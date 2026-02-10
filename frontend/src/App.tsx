@@ -18,6 +18,7 @@ import Academics from "./pages/Academics";
 import Opportunities from "./pages/Opportunities";
 import Campus from "./pages/Campus";
 import Settings from "./pages/Settings";
+import AboutUs from "./pages/AboutUs";
 import NotFound from "./pages/NotFound";
 import CalendarPage from "./pages/CalendarPage";
 import Landing from "./pages/Landing";
@@ -69,6 +70,7 @@ const App = () => {
                   <Route path="/opportunities" element={<Opportunities />} />
                   <Route path="/campus" element={<Campus />} />
                   <Route path="/settings" element={<Settings />} />
+                  <Route path="/about" element={<AboutUs />} />
                 </Route>
 
                 {/* Catch-all */}

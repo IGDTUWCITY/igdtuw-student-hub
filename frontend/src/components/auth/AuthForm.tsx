@@ -36,7 +36,9 @@ export function AuthForm() {
         }
         const { error } = await signUp(formData.email, formData.password, formData.fullName);
         if (error) throw error;
-        toast.success('Account created successfully!');
+        toast.success('Account created. Verify your email to continue.', {
+          description: 'Please check your inbox for a verification link. If you do not see it, check your spam/junk folder.',
+        });
       }
     } catch (error: any) {
       toast.error(error.message || 'Authentication failed');

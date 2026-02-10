@@ -422,7 +422,8 @@ export default function Academics() {
       </div>
 
       {/* Stats Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="sticky top-4 z-20 rounded-2xl bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 p-2">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -480,6 +481,7 @@ export default function Academics() {
           </p>
           <p className="text-sm text-muted-foreground mt-1">This semester</p>
         </motion.div>
+        </div>
       </div>
 
       {/* CGPA Target Advisor */}

@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
-import { Sparkles } from 'lucide-react';
+import { GraduationCap } from 'lucide-react';
 
 export function WelcomeHeader() {
   const { profile } = useAuth();
@@ -29,7 +29,7 @@ export function WelcomeHeader() {
 
       <div className="relative z-10">
         <div className="flex items-center gap-2 mb-2">
-          <Sparkles className="w-5 h-5" />
+          <GraduationCap className="w-5 h-5" />
           <span className="text-sm font-medium opacity-90">
             {getGreeting()}
           </span>

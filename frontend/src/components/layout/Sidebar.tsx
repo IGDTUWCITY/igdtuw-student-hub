@@ -14,6 +14,7 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
+  Info,
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -50,8 +51,8 @@ export function Sidebar() {
       {/* Logo Section */}
       <div className="p-4 border-b border-sidebar-border">
         <Link to="/dashboard" className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center flex-shrink-0">
-            <GraduationCap className="w-6 h-6 text-primary-foreground" />
+          <div className="w-12 h-12 flex-shrink-0">
+            <img src="/favicon.png" alt="Logo" className="w-full h-full object-contain" />
           </div>
           {!collapsed && (
             <motion.div
@@ -99,6 +100,30 @@ export function Sidebar() {
           );
         })}
       </nav>
+
+      {/* About Us Link */}
+      <div className="px-3 pb-2">
+        <Link
+          to="/about"
+          className={cn(
+            'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200',
+            'hover:bg-sidebar-accent dark:hover:bg-[hsl(var(--primary-hover))] group',
+            location.pathname === '/about'
+              ? 'bg-sidebar-primary text-sidebar-primary-foreground'
+              : 'text-sidebar-foreground'
+          )}
+        >
+          <Info
+            className={cn(
+              'w-5 h-5 flex-shrink-0',
+              location.pathname === '/about'
+                ? 'text-sidebar-primary-foreground'
+                : 'text-muted-foreground group-hover:text-sidebar-foreground dark:group-hover:text-primary-foreground'
+            )}
+          />
+          {!collapsed && <span className="font-medium text-sm">About Us</span>}
+        </Link>
+      </div>
 
       {/* User Section */}
       <div className="p-3 border-t border-sidebar-border">
