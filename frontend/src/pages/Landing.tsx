@@ -25,12 +25,12 @@ export default function Landing() {
               <span>IGDTUW Student Community</span>
             </div>
             <BlurText
-              text="IGDTUW CITY 2.0"
+              text="IGDTUW City 2.0"
               delay={500}
               animateBy="words"
               direction="top"
               onAnimationComplete={handleAnimationComplete}
-              className="m-0 justify-center text-5xl font-bold tracking-tight sm:text-6xl"
+              className="m-0 justify-center font-display text-5xl font-bold leading-none tracking-[-0.03em] text-white drop-shadow-[0_10px_28px_rgba(0,0,0,0.45)] sm:text-6xl md:text-7xl"
             />
             <TextType
               className="mt-5 justify-center text-lg text-white/90 sm:text-xl"
