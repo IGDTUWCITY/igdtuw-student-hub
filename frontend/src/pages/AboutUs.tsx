@@ -7,20 +7,20 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 export default function AboutUs() {
   const founders = [
     {
-      name: "Aarohi Chadha",
-      role: "Founder & Developer",
-      description: "B.Tech CSE-AI 3rd Year Student. Former Intern at Google, driving the evolution of IGDTUW City into a scalable, high-impact campus platform through continuous architectural and product enhancement.",
-      linkedin: "https://www.linkedin.com/in/aarohi-chadha/",
-      image: "aarohi.jpeg",
-      initials: "AC"
-    },
-    {
-      name: "Joysa Jain",
+       name: "Joysa Jain",
       role: "Founder & Developer",
       description: "B.Tech CSE-AI 3rd Year Student. Former Intern at Cisco. The major visionary behind IGDTUW City, combining technical expertise with creative insight to revolutionize the campus digital experience.",
       linkedin: "https://www.linkedin.com/in/joysa-jain-86b589283/",
       image: "joysa.jpeg",
       initials: "JJ"
+    },
+    {
+      name: "Aarohi Chadha",
+      role: "Founder & Developer",
+      description: "B.Tech CSE-AI 3rd Year Student. Former Intern at Google, driving the evolution of IGDTUW City into a scalable,campus platform through continuous architectural and product enhancement.",
+      linkedin: "https://www.linkedin.com/in/aarohi-chadha/",
+      image: "aarohi.jpeg",
+      initials: "AC"
     }
   ];
 

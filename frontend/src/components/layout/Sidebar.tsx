@@ -16,7 +16,8 @@ import {
   ChevronRight,
   Info,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const navItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
@@ -28,10 +29,12 @@ const navItems = [
 ];
 
 import { ModeToggle } from '@/components/mode-toggle';
-import { Calendar as CalendarComponent } from '../ui/calendar';
 
 export function Sidebar() {
-  const [collapsed, setCollapsed] = useState(false);
+  const isMobile = useIsMobile();
+  const [collapsed, setCollapsed] = useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth < 768 : false
+  );
   const location = useLocation();
   const { profile, signOut } = useAuth();
 
@@ -41,12 +44,17 @@ export function Sidebar() {
     .join('')
     .toUpperCase() || 'U';
 
+  // Auto-adjust when crossing the mobile breakpoint.
+  useEffect(() => {
+    setCollapsed(isMobile);
+  }, [isMobile]);
+
   return (
     <motion.aside
       initial={false}
       animate={{ width: collapsed ? 80 : 280 }}
       transition={{ duration: 0.3, ease: 'easeInOut' }}
-      className="fixed left-0 top-0 h-screen bg-sidebar border-r border-sidebar-border flex-col z-50 hidden md:flex"
+      className="fixed left-0 top-0 h-screen bg-sidebar border-r border-sidebar-border flex-col z-50 flex"
     >
       {/* Logo Section */}
       <div className="p-4 border-b border-sidebar-border">

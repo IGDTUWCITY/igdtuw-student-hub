@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
+import { Link } from 'react-router-dom';
 import { WelcomeHeader } from '@/components/dashboard/WelcomeHeader';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { QuickActions } from '@/components/dashboard/QuickActions';
@@ -8,13 +9,13 @@ import { supabase } from '@/integrations/supabase/client';
 import { Announcement } from '@/types/database';
 import {
   GraduationCap,
-  Target,
   Calendar,
   Bookmark,
   Megaphone,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
 
 type AnnRow = Announcement & {
@@ -24,11 +25,32 @@ type AnnRow = Announcement & {
 };
 
 export default function Dashboard() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [cgpa, setCgpa] = useState<number | null>(null);
   const [savedCount, setSavedCount] = useState(0);
   const [upcomingEvents, setUpcomingEvents] = useState(0);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+
+  const profileChecks = [
+    !!profile?.branch,
+    !!profile?.year,
+    !!profile?.current_semester,
+    !!profile?.enrollment_number?.trim(),
+    !!profile?.bio?.trim(),
+    !!profile?.linkedin_url?.trim(),
+    !!profile?.github_url?.trim(),
+    (profile?.skills?.length || 0) > 0,
+    (profile?.interests?.length || 0) > 0,
+  ];
+  const completedProfileFields = profileChecks.filter(Boolean).length;
+  const totalProfileFields = profileChecks.length;
+  const profileCompletion =
+    totalProfileFields > 0
+      ? Math.round((completedProfileFields / totalProfileFields) * 100)
+      : 0;
+  const donutCircumference = 2 * Math.PI * 42;
+  const donutOffset =
+    donutCircumference - (profileCompletion / 100) * donutCircumference;
 
   useEffect(() => {
     if (user) {
@@ -83,44 +105,29 @@ export default function Dashboard() {
       .limit(0);
     setSavedCount(savedOppsCount || 0);
 
-    // Upcoming events: number of announcements currently visible (same filter as Campus)
+    // Fetch upcoming events count (avoid HEAD)
+    const { count: eventsCount } = await supabase
+      .from('user_events')
+      .select('*', { count: 'exact' })
+      .eq('user_id', user!.id)
+      .gte('event_date', new Date().toISOString())
+      .limit(0);
+    setUpcomingEvents(eventsCount || 0);
+
+    // Fetch recent announcements
     const { data: announcementsData } = await supabase
       .from('announcements')
       .select('*, society:societies(*)')
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(5);
     if (announcementsData) {
       const now = new Date();
       const active = (announcementsData as AnnRow[]).filter((a) => {
-        if (!a.event_date) return false;
-        const timeStr = a.end_time || a.start_time || '23:59';
-        const endDateRaw = a.event_date;
-        let end = new Date(`${String(endDateRaw)}T${timeStr}`);
-        if (isNaN(end.getTime())) {
-          const [y, m, d] = String(endDateRaw).split('-').map((s: string) => parseInt(s, 10));
-          const [hh, mm] = String(timeStr).split(':').map((s: string) => parseInt(s, 10));
-          end = new Date(y, (m || 1) - 1, d || 1, hh || 0, mm || 0);
-        }
-        return end.getTime() >= now.getTime();
-      });
-      setUpcomingEvents(active.length);
-    } else {
-      setUpcomingEvents(0);
-    }
-
-    // Fetch recent announcements (match Campus filter and show all active)
-    const { data: recentAnnouncements } = await supabase
-      .from('announcements')
-      .select('*, society:societies(*)')
-      .order('created_at', { ascending: false });
-    if (recentAnnouncements) {
-      const now = new Date();
-      const active = (recentAnnouncements as AnnRow[]).filter((a) => {
         if (!a.event_date) return true;
         const timeStr = a.end_time || a.start_time || '23:59';
-        const endDateRaw = a.event_date;
-        let end = new Date(`${String(endDateRaw)}T${timeStr}`);
+        let end = new Date(`${String(a.event_date)}T${timeStr}`);
         if (isNaN(end.getTime())) {
-          const [y, m, d] = String(endDateRaw).split('-').map((s: string) => parseInt(s, 10));
+          const [y, m, d] = String(a.event_date).split('-').map((s: string) => parseInt(s, 10));
           const [hh, mm] = String(timeStr).split(':').map((s: string) => parseInt(s, 10));
           end = new Date(y, (m || 1) - 1, d || 1, hh || 0, mm || 0);
         }
@@ -136,7 +143,7 @@ export default function Dashboard() {
       <WelcomeHeader />
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         <StatCard
           icon={GraduationCap}
           label="Current CGPA"
@@ -157,22 +164,60 @@ export default function Dashboard() {
           icon={Calendar}
           label="Upcoming Events"
           value={upcomingEvents}
-          subtext="In your university"
+          subtext="In your calendar"
           variant="success"
           delay={0.2}
-          onClick={() => {
-            sessionStorage.setItem('campusActiveTab', 'announcements');
-            window.open('/campus', '_self');
-          }}
         />
-        <StatCard
-          icon={Target}
-          label="Applications"
-          value="0"
-          subtext="Track your progress"
-          variant="default"
-          delay={0.3}
-        />
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.3 }}
+          className="p-5 rounded-xl border shadow-sm bg-card border-border card-hover"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div className="space-y-2 flex-1 min-w-0">
+              <p className="text-sm font-medium text-muted-foreground">
+                Profile Completion
+              </p>
+              <p className="text-3xl font-bold font-display text-foreground">
+                {profileCompletion}%
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Complete your details in Profile section
+              </p>
+            </div>
+            <div className="relative h-24 w-24 shrink-0">
+              <svg viewBox="0 0 100 100" className="h-24 w-24 -rotate-90">
+                <circle
+                  cx="50"
+                  cy="50"
+                  r="42"
+                  fill="none"
+                  stroke="hsl(var(--muted))"
+                  strokeWidth="10"
+                />
+                <circle
+                  cx="50"
+                  cy="50"
+                  r="42"
+                  fill="none"
+                  stroke="hsl(var(--primary))"
+                  strokeWidth="10"
+                  strokeLinecap="round"
+                  strokeDasharray={donutCircumference}
+                  strokeDashoffset={donutOffset}
+                  style={{ transition: 'stroke-dashoffset 500ms ease' }}
+                />
+              </svg>
+              <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-xs font-semibold text-foreground">
+                {completedProfileFields}/{totalProfileFields}
+              </div>
+            </div>
+          </div>
+          <Button asChild variant="outline" size="sm" className="mt-4 w-full">
+            <Link to="/settings">Update Profile</Link>
+          </Button>
+        </motion.div>
       </div>
 
       {/* Quick Actions */}
@@ -246,4 +291,3 @@ export default function Dashboard() {
     </div>
   );
 }
-

@@ -422,19 +422,19 @@ export default function Academics() {
       </div>
 
       {/* Stats Overview */}
-      <div className="sticky top-4 z-20 rounded-2xl bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 p-2">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="sticky top-2 md:top-4 z-20 rounded-2xl bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 p-1.5 md:p-2">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2 md:gap-4">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="p-6 rounded-xl bg-gradient-to-br from-primary to-primary/80 text-primary-foreground"
+          className="p-3 md:p-6 rounded-xl bg-gradient-to-br from-primary to-primary/80 text-primary-foreground"
         >
-          <div className="flex items-center gap-3 mb-2">
-            <Calculator className="w-6 h-6" />
-            <span className="text-sm font-medium opacity-90">Current CGPA</span>
+          <div className="flex items-center gap-2 md:gap-3 mb-1 md:mb-2">
+            <Calculator className="w-5 h-5 md:w-6 md:h-6" />
+            <span className="text-xs md:text-sm font-medium opacity-90">Current CGPA</span>
           </div>
-          <p className="text-4xl font-bold font-display">{cgpa.toFixed(2)}</p>
-          <p className="text-sm opacity-80 mt-1">
+          <p className="text-2xl md:text-4xl font-bold font-display">{cgpa.toFixed(2)}</p>
+          <p className="text-xs md:text-sm opacity-80 mt-0.5 md:mt-1">
             Across {semesters.filter((s) => s.is_completed).length} completed
             semesters
           </p>
@@ -444,18 +444,18 @@ export default function Academics() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="p-6 rounded-xl bg-card border border-border"
+          className="p-3 md:p-6 rounded-xl bg-card border border-border"
         >
-          <div className="flex items-center gap-3 mb-2">
-            <TrendingUp className="w-6 h-6 text-success" />
-            <span className="text-sm font-medium text-muted-foreground">
+          <div className="flex items-center gap-2 md:gap-3 mb-1 md:mb-2">
+            <TrendingUp className="w-5 h-5 md:w-6 md:h-6 text-success" />
+            <span className="text-xs md:text-sm font-medium text-muted-foreground">
               Semester {selectedSemester} SGPA
             </span>
           </div>
-          <p className="text-4xl font-bold font-display text-foreground">
+          <p className="text-2xl md:text-4xl font-bold font-display text-foreground">
             {currentSGPA.toFixed(2)}
           </p>
-          <p className="text-sm text-muted-foreground mt-1">
+          <p className="text-xs md:text-sm text-muted-foreground mt-0.5 md:mt-1">
             {useDirectSgpa ? 'Based on direct SGPA entry' : 'Based on entered grades'}
           </p>
         </motion.div>
@@ -464,22 +464,22 @@ export default function Academics() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="p-6 rounded-xl bg-card border border-border"
+          className="p-3 md:p-6 rounded-xl bg-card border border-border"
         >
-          <div className="flex items-center gap-3 mb-2">
-            <BookOpen className="w-6 h-6 text-info" />
-            <span className="text-sm font-medium text-muted-foreground">
+          <div className="flex items-center gap-2 md:gap-3 mb-1 md:mb-2">
+            <BookOpen className="w-5 h-5 md:w-6 md:h-6 text-info" />
+            <span className="text-xs md:text-sm font-medium text-muted-foreground">
               Total Credits
             </span>
           </div>
-          <p className="text-4xl font-bold font-display text-foreground">
+          <p className="text-2xl md:text-4xl font-bold font-display text-foreground">
             {useDirectSgpa
               ? Number(directCredits) || 0
               : subjects
                   .filter((s) => s.subject_name && s.grade)
                   .reduce((acc, s) => acc + s.credits, 0)}
           </p>
-          <p className="text-sm text-muted-foreground mt-1">This semester</p>
+          <p className="text-xs md:text-sm text-muted-foreground mt-0.5 md:mt-1">This semester</p>
         </motion.div>
         </div>
       </div>
