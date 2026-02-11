@@ -94,6 +94,7 @@ Backend will run on `http://localhost:3001`
 - 🎯 **Opportunities** - AI-curated internships, scholarships, and events
 - ⚙️ **Settings** - Profile management and preferences
 - 📱 **Responsive Design** - Works on all devices
+- Available on both dark and light mode as per convenience
 
 ## Deployment
 
