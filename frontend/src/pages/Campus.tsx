@@ -53,7 +53,12 @@ type AnnRow = Announcement & {
 const isSchemaColumnError = (message?: string) => {
   if (!message) return false;
   const m = message.toLowerCase();
-  return m.includes('schema cache') && (m.includes('content') || m.includes('event_location') || m.includes('end_date'));
+  return m.includes('schema cache') && (
+    m.includes('content') ||
+    m.includes('event_location') ||
+    m.includes('end_date') ||
+    m.includes('end_time_display')
+  );
 };
 
 const formatDateOnly = (value?: string | null) => {
@@ -66,6 +71,17 @@ const formatDateOnly = (value?: string | null) => {
 const toDateInputValue = (value?: string | null) => {
   if (!value) return '';
   return String(value).slice(0, 10);
+};
+
+const makeLocalDateTime = (date: string, time: string) => {
+  const [y, m, d] = String(date).split('-').map((s) => parseInt(s, 10));
+  const [hh, mm] = String(time).split(':').map((s) => parseInt(s, 10));
+  return new Date(y || 0, (m || 1) - 1, d || 1, hh || 0, mm || 0);
+};
+
+const parseTimeToMinutes = (time: string) => {
+  const [hh, mm] = String(time).split(':').map((s) => parseInt(s, 10));
+  return (hh || 0) * 60 + (mm || 0);
 };
 
 export default function Campus() {
@@ -97,7 +113,7 @@ export default function Campus() {
         return;
       }
 
-      const { data, error } = await supabase.rpc('is_pr_allowlisted');
+      const { data, error } = await supabase.rpc('is_pr_allowlisted' as any);
       if (error) {
         setCanPost(false);
         return;
@@ -164,20 +180,38 @@ export default function Campus() {
       return;
     }
 
-    const { error } = await supabase.from('user_events').insert({
+    const ann = announcement as AnnRow;
+    const startDt = makeLocalDateTime(String(ann.event_date).slice(0, 10), ann.start_time || '00:00');
+    const endBase = ann.end_date || ann.event_date;
+    const endDt = makeLocalDateTime(String(endBase).slice(0, 10), (ann as any).end_time_display || ann.end_time || ann.start_time || '00:00');
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const formatLocal = (d: Date) =>
+      `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}T${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
+    const gcal = new URL('https://calendar.google.com/calendar/render');
+    gcal.searchParams.set('action', 'TEMPLATE');
+    gcal.searchParams.set('text', announcement.title);
+    gcal.searchParams.set('dates', `${formatLocal(startDt)}/${formatLocal(endDt)}`);
+    const details = [
+      ann.short_desc,
+      ann.full_details,
+      (ann as any).registration_url ? `Register: ${(ann as any).registration_url}` : '',
+      (ann as any).contact_info ? `Contact: ${(ann as any).contact_info}` : '',
+    ].filter(Boolean).join('\n\n');
+    if (details) gcal.searchParams.set('details', details);
+    if (ann.venue) gcal.searchParams.set('location', ann.venue);
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+    gcal.searchParams.set('ctz', tz);
+
+    window.open(gcal.toString(), '_blank', 'noopener');
+    toast.success('Opening Google Calendar');
+    supabase.from('user_events').insert({
       user_id: user!.id,
       title: announcement.title,
-      description: [(announcement as AnnRow).short_desc, (announcement as AnnRow).full_details].filter(Boolean).join('\n\n'),
-      event_date: announcement.event_date,
+      description: [ann.short_desc, ann.full_details].filter(Boolean).join('\n\n'),
+      event_date: endDt.toISOString(),
       event_type: 'campus',
       source_announcement_id: announcement.id,
-    });
-
-    if (error) {
-      toast.error('Failed to add to calendar');
-    } else {
-      toast.success('Added to your calendar');
-    }
+    }).then(() => {}, () => {});
   };
 
   const saveInterest = async () => {
@@ -243,86 +277,88 @@ export default function Campus() {
     announcement,
   }: {
     announcement: Announcement;
-  }) => (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-    >
-      <Card className="card-hover">
-        <CardHeader className="pb-3">
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-2">
-                {announcement.society && (
-                  <Badge variant="outline">{announcement.society.name}</Badge>
+  }) => {
+    const ann = announcement as unknown as AnnRow;
+    const start = ann.event_date ? new Date(`${String(ann.event_date)}T${ann.start_time || '00:00'}`) : null;
+    const endBaseDate = ann.end_date || ann.event_date;
+    const endTimeStr = (ann as any).end_time_display || ann.end_time || ann.start_time || '00:00';
+    const end = endBaseDate ? new Date(`${String(endBaseDate)}T${endTimeStr}`) : null;
+
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+      >
+        <Card className="card-hover">
+          <CardHeader className="pb-3">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-2">
+                  {announcement.society && (
+                    <span className="text-base font-semibold text-foreground">{announcement.society.name}</span>
+                  )}
+                </div>
+                <CardTitle className="text-lg">{announcement.title}</CardTitle>
+                <CardDescription className="mt-1">
+                  {format(new Date(announcement.created_at), 'MMMM d, yyyy')}
+                </CardDescription>
+              </div>
+              {canPost && (announcement as any)?.created_by === user?.id && (
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="icon" className="hover:bg-primary/10 hover:text-primary" onClick={() => openEditAnnouncement(announcement)}>
+                    <Edit className="w-4 h-4" />
+                  </Button>
+                  <Button variant="outline" size="icon" className="hover:bg-primary/10 hover:text-primary" onClick={() => handleDeleteAnnouncement(announcement.id)}>
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              )}
+            </div>
+          </CardHeader>
+
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground line-clamp-3">
+              {ann.short_desc}
+            </p>
+
+            {(ann.event_date || ann.venue) && (
+              <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
+                {ann.event_date && start && end && (
+                  <span className="flex items-center gap-1">
+                    <Calendar className="w-4 h-4" />
+                    {`${format(start, 'h:mm a, MMM d')} - ${format(end, 'h:mm a, MMM d')}`}
+                  </span>
+                )}
+                {ann.venue && (
+                  <span className="flex items-center gap-1">
+                    <MapPin className="w-4 h-4" />
+                    {ann.venue}
+                  </span>
                 )}
               </div>
-              <CardTitle className="text-lg">{announcement.title}</CardTitle>
-              <CardDescription className="mt-1">
-                {format(new Date(announcement.created_at), 'MMMM d, yyyy')}
-              </CardDescription>
-            </div>
-            {canPost && (announcement as any)?.created_by === user?.id && (
-              <div className="flex items-center gap-2">
-                <Button variant="outline" size="icon" className="hover:bg-primary/10 hover:text-primary" onClick={() => openEditAnnouncement(announcement)}>
-                  <Edit className="w-4 h-4" />
-                </Button>
-                <Button variant="outline" size="icon" className="hover:bg-primary/10 hover:text-primary" onClick={() => handleDeleteAnnouncement(announcement.id)}>
-                  <Trash2 className="w-4 h-4" />
-                </Button>
-              </div>
             )}
-          </div>
-        </CardHeader>
 
-        <CardContent className="space-y-4">
-          <p className="text-sm text-muted-foreground line-clamp-3">
-            {(announcement as AnnRow).short_desc}
-          </p>
-
-          {(announcement.event_date || (announcement as AnnRow).venue) && (
-            <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-              {announcement.event_date && (
-                <span className="flex items-center gap-1">
-                  <Calendar className="w-4 h-4" />
-                  {format(new Date(`${(announcement as AnnRow).event_date}T${(announcement as AnnRow).start_time || '00:00'}`), 'MMM d, yyyy')}
-                  {(announcement as AnnRow).start_time && (
-                    <span className="ml-1">
-                     {(announcement as AnnRow).start_time}
-                      {(announcement as AnnRow).end_time ? ` - ${(announcement as AnnRow).end_time}` : ''}
-                    </span>
-                  )}
-                </span>
-              )}
-              {(announcement as AnnRow).venue && (
-                <span className="flex items-center gap-1">
-                  <MapPin className="w-4 h-4" />
-                  {(announcement as AnnRow).venue}
-                </span>
-              )}
+            {ann.event_date && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="hover:bg-primary/10 hover:text-primary"
+                onClick={() => addToCalendar(announcement)}
+              >
+                <CalendarPlus className="w-4 h-4 mr-2" />
+                Add to Calendar
+              </Button>
+            )}
+            <div className="flex justify-end">
+              <Button variant="ghost" size="sm" className="hover:bg-primary/10 hover:text-primary" onClick={() => openViewAnnouncement(announcement)}>
+                View more
+              </Button>
             </div>
-          )}
-
-          {announcement.event_date && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="hover:bg-primary/10 hover:text-primary"
-              onClick={() => addToCalendar(announcement)}
-            >
-              <CalendarPlus className="w-4 h-4 mr-2" />
-              Add to Calendar
-            </Button>
-          )}
-          <div className="flex justify-end">
-            <Button variant="ghost" size="sm" className="hover:bg-primary/10 hover:text-primary" onClick={() => openViewAnnouncement(announcement)}>
-              View more
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    </motion.div>
-  );
+          </CardContent>
+        </Card>
+      </motion.div>
+    );
+  };
 
   const SocietyCard = ({ society }: { society: Society }) => (
     <motion.div
@@ -493,11 +529,23 @@ export default function Campus() {
       toast.error('Please fill all required fields');
       return;
     }
-    const start = new Date(`${annForm.date}T${annForm.startTime}`);
-    const end = new Date(`${annForm.endDate}T${annForm.endTime}`);
-    if (end <= start) {
-      toast.error('End date/time must be after start date/time');
-      return;
+    const start = makeLocalDateTime(annForm.date, annForm.startTime);
+    const end = makeLocalDateTime(annForm.endDate, annForm.endTime);
+    if (annForm.endDate === annForm.date) {
+      if (end <= start) {
+        toast.error('For same-day events, end time must be later than start time');
+        return;
+      }
+    } else {
+      // Only require end date to be after start date; times can be any values
+      const [sy, sm, sd] = annForm.date.split('-').map((s) => parseInt(s, 10));
+      const [ey, em, ed] = annForm.endDate.split('-').map((s) => parseInt(s, 10));
+      const startDateOnly = new Date(sy || 0, (sm || 1) - 1, sd || 1);
+      const endDateOnly = new Date(ey || 0, (em || 1) - 1, ed || 1);
+      if (endDateOnly <= startDateOnly) {
+        toast.error('End date must be after start date for cross-day events');
+        return;
+      }
     }
     const tagsArr = annForm.tags.split(',').map(t => t.trim()).filter(Boolean);
     const normalizedFullDetails = annForm.fullDetails.trim();
@@ -509,6 +557,7 @@ export default function Campus() {
       end_date: annForm.endDate,
       start_time: annForm.startTime,
       end_time: annForm.endTime,
+      end_time_display: annForm.endTime,
       venue: annForm.venue,
       short_desc: normalizedShortDesc,
       full_details: normalizedFullDetails || '',
@@ -524,6 +573,11 @@ export default function Campus() {
       if (m.includes('end_date')) delete retryPayload.end_date;
       if (m.includes('content')) retryPayload.content = normalizedFullDetails || normalizedShortDesc;
       if (m.includes('event_location')) retryPayload.event_location = annForm.venue;
+      if (m.includes('end_time_display')) delete retryPayload.end_time_display;
+      ({ error } = await supabase.from('announcements').insert(retryPayload));
+    }
+    if (error && /end_time.*must.*after.*start_time/i.test(error.message || '')) {
+      const retryPayload: any = { ...payload, end_time: '23:59' };
       ({ error } = await supabase.from('announcements').insert(retryPayload));
     }
     if (error) {
@@ -542,11 +596,22 @@ export default function Campus() {
       toast.error('Please fill all required fields');
       return;
     }
-    const start = new Date(`${annForm.date}T${annForm.startTime}`);
-    const end = new Date(`${annForm.endDate}T${annForm.endTime}`);
-    if (end <= start) {
-      toast.error('End date/time must be after start date/time');
-      return;
+    const start = makeLocalDateTime(annForm.date, annForm.startTime);
+    const end = makeLocalDateTime(annForm.endDate, annForm.endTime);
+    if (annForm.endDate === annForm.date) {
+      if (end <= start) {
+        toast.error('For same-day events, end time must be later than start time');
+        return;
+      }
+    } else {
+      const [sy, sm, sd] = annForm.date.split('-').map((s) => parseInt(s, 10));
+      const [ey, em, ed] = annForm.endDate.split('-').map((s) => parseInt(s, 10));
+      const startDateOnly = new Date(sy || 0, (sm || 1) - 1, sd || 1);
+      const endDateOnly = new Date(ey || 0, (em || 1) - 1, ed || 1);
+      if (endDateOnly <= startDateOnly) {
+        toast.error('End date must be after start date for cross-day events');
+        return;
+      }
     }
     const normalizedFullDetails = annForm.fullDetails.trim();
     const normalizedShortDesc = annForm.shortDesc.trim();
@@ -558,6 +623,7 @@ export default function Campus() {
       end_date: annForm.endDate,
       start_time: annForm.startTime,
       end_time: annForm.endTime,
+      end_time_display: annForm.endTime,
       venue: annForm.venue,
       short_desc: normalizedShortDesc,
       full_details: normalizedFullDetails || '',
@@ -572,6 +638,11 @@ export default function Campus() {
       if (m.includes('end_date')) delete retryPayload.end_date;
       if (m.includes('content')) retryPayload.content = normalizedFullDetails || normalizedShortDesc;
       if (m.includes('event_location')) retryPayload.event_location = annForm.venue;
+      if (m.includes('end_time_display')) delete retryPayload.end_time_display;
+      ({ error } = await supabase.from('announcements').update(retryPayload).eq('id', editAnnouncement.id));
+    }
+    if (error && /end_time.*must.*after.*start_time/i.test(error.message || '')) {
+      const retryPayload: any = { ...updatePayload, end_time: '23:59' };
       ({ error } = await supabase.from('announcements').update(retryPayload).eq('id', editAnnouncement.id));
     }
     if (error) {

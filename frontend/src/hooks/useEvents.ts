@@ -153,7 +153,6 @@ export function useEvents(from: Date, to: Date, type?: 'contest' | 'hackathon' |
   });
 }
 
-
 // Fetch saved events for current user (using user_events with reminder enabled)
 export function useSavedEvents() {
   const { user } = useAuth();
@@ -382,3 +381,5 @@ export function useEventReminder(eventId: string) {
   const { data: reminders } = useReminders();
   return reminders?.find(r => r.eventId === eventId);
 } 
+
+

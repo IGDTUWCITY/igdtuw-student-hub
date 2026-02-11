@@ -9,7 +9,7 @@ export default function AboutUs() {
     {
       name: "Aarohi Chadha",
       role: "Founder & Developer",
-      description: "B.Tech CSE-AI 3rd Year Student. Former Intern at Google. An innovative developer for IGDTUW City, committed to leveraging technology to solve real-world problems and uplift the student community.",
+      description: "B.Tech CSE-AI 3rd Year Student. Former Intern at Google, driving the evolution of IGDTUW City into a scalable, high-impact campus platform through continuous architectural and product enhancement.",
       linkedin: "https://www.linkedin.com/in/aarohi-chadha/",
       image: "aarohi.jpeg",
       initials: "AC"

@@ -11,6 +11,7 @@ interface StatCardProps {
   trendValue?: string;
   variant?: 'default' | 'primary' | 'accent' | 'success';
   delay?: number;
+  onClick?: () => void;
 }
 
 const variantStyles = {
@@ -34,6 +35,7 @@ export function StatCard({
   subtext,
   variant = 'default',
   delay = 0,
+  onClick,
 }: StatCardProps) {
   return (
     <motion.div
@@ -42,8 +44,10 @@ export function StatCard({
       transition={{ duration: 0.4, delay }}
       className={cn(
         'p-5 rounded-xl border shadow-sm card-hover',
-        variantStyles[variant]
+        variantStyles[variant],
+        onClick ? 'cursor-pointer' : ''
       )}
+      onClick={onClick}
     >
       <div className="flex items-start justify-between">
         <div className="space-y-2">
