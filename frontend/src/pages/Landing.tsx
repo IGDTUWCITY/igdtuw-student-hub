@@ -20,10 +20,10 @@ export default function Landing() {
       <div className="min-h-screen bg-black/35">
         <section className="mx-auto flex min-h-screen max-w-6xl items-center px-6 py-16">
           <div className="mx-auto max-w-2xl text-center">
-            <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/10 px-4 py-2 text-sm backdrop-blur-sm">
-              <GraduationCap className="h-4 w-4" />
-              <span>IGDTUW Student Community</span>
-            </div>
+            {/* <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/10 px-4 py-2 text-sm backdrop-blur-sm"> */}
+              {/* <GraduationCap className="h-4 w-4" /> */}
+              {/* <span>IGDTUW Student Community</span> */}
+            {/* </div> */}
             <BlurText
               text="IGDTUW City 2.0"
               delay={500}
@@ -36,8 +36,8 @@ export default function Landing() {
               className="mt-5 justify-center text-lg text-white/90 sm:text-xl"
               text={[
                 'The ultimate student hub',
-                'Built for IGDTUW students',
                 'Discover. Plan. Grow.',
+                'Built for students by students',
               ]}
               typingSpeed={115}
               pauseDuration={1500}

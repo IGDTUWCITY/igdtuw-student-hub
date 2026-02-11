@@ -112,7 +112,7 @@ export function CalendarGrid({ events, onEventClick, loading }: CalendarGridProp
     <div className="flex flex-col h-screen md:h-screen w-full">
      <div className="text-center mt-6 mb-4 px-4 md:px-6">
   <h1
-    className="text-2xl md:text-4xl font-semibold tracking-tight text-[#0F2A2D]"
+    className="text-2xl md:text-4xl font-semibold tracking-tight text-foreground"
     style={{ fontFamily: 'Manrope, Inter, sans-serif' }}
   >
     Calendar of Algorithms
