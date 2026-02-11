@@ -8,7 +8,7 @@ import {
   LayoutDashboard,
   GraduationCap,
   Briefcase,
-  Users,
+  Building2,
   Calendar,
   User,
   LogOut,
@@ -24,7 +24,7 @@ const navItems = [
   { icon: Calendar, label: 'Calgo', path: '/calendar' },
   { icon: GraduationCap, label: 'Academics', path: '/academics' },
   { icon: Briefcase, label: 'Opportunities', path: '/opportunities' },
-  { icon: Users, label: 'Campus Life', path: '/campus' },
+  { icon: Building2, label: 'Campus Life', path: '/campus' },
   { icon: User, label: 'Profile', path: '/settings' },
 ];
 
