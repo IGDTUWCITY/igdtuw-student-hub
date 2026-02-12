@@ -7,6 +7,8 @@ import { EventCard } from './EventCard';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { format, addDays } from 'date-fns';
 
 interface CalendarGridProps {
   events: CalendarEvent[];
@@ -69,6 +71,7 @@ export function CalendarGrid({ events, onEventClick, loading }: CalendarGridProp
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>(PLATFORM_FILTERS.map(p => p.key));
   const selectedTypes = ['contest'];
+  const isMobile = useIsMobile();
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -85,6 +88,11 @@ export function CalendarGrid({ events, onEventClick, loading }: CalendarGridProp
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
+
+  // Mobile: Get next 7 days
+  const upcomingDays = useMemo(() => {
+    return Array.from({ length: 7 }, (_, i) => addDays(today, i));
+  }, []);
 
   const goToPreviousMonth = () => {
     setCurrentDate(new Date(year, month - 1, 1));
@@ -123,6 +131,7 @@ export function CalendarGrid({ events, onEventClick, loading }: CalendarGridProp
 </div>
 
       {/* Header */}
+      {!isMobile && (
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4 px-4 md:px-6 pt-4">
         <div className="flex items-center gap-2">
           <Button variant="outline" size="icon" onClick={goToPreviousMonth}>
@@ -155,8 +164,95 @@ export function CalendarGrid({ events, onEventClick, loading }: CalendarGridProp
           })}
         </div>
       </div>
+      )}
 
-      {/* Calendar grid */}
+      {isMobile && (
+        <div className="px-4 mb-4">
+          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+            {PLATFORM_FILTERS.map(p => {
+              const active = selectedPlatforms.includes(p.key);
+              return (
+                <Badge
+                  key={p.key}
+                  className={cn(
+                    'cursor-pointer transition-colors whitespace-nowrap',
+                    active ? p.color : p.dim
+                  )}
+                  onClick={() => togglePlatform(p.key)}
+                >
+                  {p.label}
+                </Badge>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Mobile List View */}
+      {isMobile ? (
+        <div className="flex-1 overflow-y-auto px-4 pb-20 space-y-4">
+          {upcomingDays.map((date) => {
+            const dayEvents = getEventsForDay(filteredEvents, date);
+            if (dayEvents.length === 0) return null;
+
+            return (
+              <div key={date.toISOString()} className="space-y-2">
+                <h3 className="text-sm font-semibold text-muted-foreground sticky top-0 bg-background py-2 z-10">
+                  {format(date, 'EEEE, d MMM')}
+                </h3>
+                <div className="space-y-2">
+                  {dayEvents.map((event) => {
+                     const platform = PLATFORM_FILTERS.find(p => p.key === normalizePlatform(event.platform || event.sourceName));
+                     const durationMs = event.endTime.getTime() - event.startTime.getTime();
+                     const durationHrs = Math.floor(durationMs / (1000 * 60 * 60));
+                     const durationMins = Math.floor((durationMs % (1000 * 60 * 60)) / (1000 * 60));
+                     const durationStr = `${durationHrs}h ${durationMins > 0 ? `${durationMins}m` : ''}`;
+
+                     return (
+                      <div 
+                        key={event.id}
+                        className="flex items-start gap-3 p-3 rounded-lg border border-border bg-card active:bg-accent/50 transition-colors"
+                        onClick={() => onEventClick(event)}
+                      >
+                        <div className="flex flex-col items-center min-w-[3rem]">
+                          <span className="text-sm font-bold text-foreground">
+                            {format(event.startTime, 'HH:mm')}
+                          </span>
+                        </div>
+                        
+                        <div className="flex-1 min-w-0">
+                          <h4 className="text-sm font-medium text-foreground truncate leading-tight mb-1">
+                            {event.title}
+                          </h4>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <span>{durationStr}</span>
+                            <span>•</span>
+                            <span className={cn(
+                              "font-medium",
+                              platform?.key === 'leetcode' && "text-amber-600",
+                              platform?.key === 'codeforces' && "text-teal-600",
+                              platform?.key === 'atcoder' && "text-indigo-600",
+                              platform?.key === 'codechef' && "text-rose-600"
+                            )}>
+                              {platform?.label || event.sourceName}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+          {upcomingDays.every(date => getEventsForDay(filteredEvents, date).length === 0) && (
+             <div className="text-center py-10 text-muted-foreground text-sm">
+               No contests in the next 7 days based on your filters.
+             </div>
+          )}
+        </div>
+      ) : (
+      /* Calendar grid */
       <div className="flex-1 border border-border overflow-hidden bg-card mx-[6.5px] mb-[6.5px] rounded-xl">
         {/* Weekday headers */}
         <div className="grid grid-cols-7 border-b border-border bg-muted/50">
@@ -234,6 +330,7 @@ export function CalendarGrid({ events, onEventClick, loading }: CalendarGridProp
           </AnimatePresence>
         </div>
       </div>
+      )}
     </div>
   );
 }

@@ -10,7 +10,7 @@ let initialized = false;
 
 function loadGtagScript(measurementId: string) {
   const existing = document.querySelector<HTMLScriptElement>(
-    `script[src=\"https://www.googletagmanager.com/gtag/js?id=${measurementId}\"]`
+    `script[src="https://www.googletagmanager.com/gtag/js?id=${measurementId}"]`
   );
 
   if (existing) return;
