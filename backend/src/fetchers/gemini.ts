@@ -1,5 +1,5 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { SearchResult } from './serpapi';
+import type { SearchResult } from './serpapi.js';
 
 // Full opportunity structure matching database schema
 export interface FetchedOpportunity {
@@ -146,4 +146,3 @@ RULES:
 - Start with [ and end with ]
 - No markdown, no explanations, just JSON`;
 }
-

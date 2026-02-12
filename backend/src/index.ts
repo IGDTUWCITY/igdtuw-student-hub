@@ -3,11 +3,11 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import cron from 'node-cron';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { cleanSearchResultsWithGemini } from './fetchers/gemini';
-import { searchOpportunitiesWithSerpAPI, buildSearchQueries, SearchResult } from './fetchers/serpapi';
-import { saveOpportunitiesToDatabase, cleanupExpiredOpportunities, getLastSyncTime } from './services/opportunityService';
-import { recommendSocieties } from './services/recommendationService';
-import { supabaseAdmin } from './services/supabase';
+import { cleanSearchResultsWithGemini } from './fetchers/gemini.js';
+import { searchOpportunitiesWithSerpAPI, buildSearchQueries, SearchResult } from './fetchers/serpapi.js';
+import { saveOpportunitiesToDatabase, cleanupExpiredOpportunities, getLastSyncTime } from './services/opportunityService.js';
+import { recommendSocieties } from './services/recommendationService.js';
+import { supabaseAdmin } from './services/supabase.js';
 
 // Load environment variables from .env file
 dotenv.config();

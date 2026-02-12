@@ -1,5 +1,5 @@
-import { supabaseAdmin } from './supabase';
-import { FetchedOpportunity } from '../fetchers/gemini';
+import { supabaseAdmin } from './supabase.js';
+import type { FetchedOpportunity } from '../fetchers/gemini.js';
 import crypto from 'crypto';
 
 function buildStableExternalId(
