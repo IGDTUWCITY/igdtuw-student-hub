@@ -57,6 +57,29 @@ export default function Dashboard() {
       fetchDashboardData();
     }
   }, [user]);
+  useEffect(() => {
+    const channel = supabase
+      .channel('public:announcements')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'announcements' },
+        () => fetchDashboardData()
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'announcements' },
+        () => fetchDashboardData()
+      )
+      .on(
+        'postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'announcements' },
+        () => fetchDashboardData()
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   const fetchDashboardData = async () => {
     // Fetch CGPA
@@ -105,14 +128,29 @@ export default function Dashboard() {
       .limit(0);
     setSavedCount(savedOppsCount || 0);
 
-    // Fetch upcoming events count (avoid HEAD)
-    const { count: eventsCount } = await supabase
-      .from('user_events')
-      .select('*', { count: 'exact' })
-      .eq('user_id', user!.id)
-      .gte('event_date', new Date().toISOString())
-      .limit(0);
-    setUpcomingEvents(eventsCount || 0);
+    const { data: upcomingAnnouncements } = await supabase
+      .from('announcements')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (upcomingAnnouncements) {
+      const now = new Date();
+      const activeUpcoming = (upcomingAnnouncements as AnnRow[]).filter((a) => {
+        const timeStr = a.end_time || a.start_time || '23:59';
+        const endDateRaw = (a as any).end_date || a.event_date;
+        if (!endDateRaw && !a.event_date) return false;
+        let end = new Date(`${String(endDateRaw || a.event_date)}T${timeStr}`);
+        if (isNaN(end.getTime())) {
+          const raw = String(endDateRaw || a.event_date);
+          const [y, m, d] = raw.split('-').map((s: string) => parseInt(s, 10));
+          const [hh, mm] = String(timeStr).split(':').map((s: string) => parseInt(s, 10));
+          end = new Date(y, (m || 1) - 1, d || 1, hh || 0, mm || 0);
+        }
+        return end.getTime() >= now.getTime();
+      });
+      setUpcomingEvents(activeUpcoming.length);
+    } else {
+      setUpcomingEvents(0);
+    }
 
     // Fetch recent announcements
     const { data: announcementsData } = await supabase
@@ -123,11 +161,13 @@ export default function Dashboard() {
     if (announcementsData) {
       const now = new Date();
       const active = (announcementsData as AnnRow[]).filter((a) => {
-        if (!a.event_date) return true;
         const timeStr = a.end_time || a.start_time || '23:59';
-        let end = new Date(`${String(a.event_date)}T${timeStr}`);
+        const endDateRaw = (a as any).end_date || a.event_date;
+        if (!endDateRaw && !a.event_date) return true;
+        let end = new Date(`${String(endDateRaw || a.event_date)}T${timeStr}`);
         if (isNaN(end.getTime())) {
-          const [y, m, d] = String(a.event_date).split('-').map((s: string) => parseInt(s, 10));
+          const raw = String(endDateRaw || a.event_date);
+          const [y, m, d] = raw.split('-').map((s: string) => parseInt(s, 10));
           const [hh, mm] = String(timeStr).split(':').map((s: string) => parseInt(s, 10));
           end = new Date(y, (m || 1) - 1, d || 1, hh || 0, mm || 0);
         }
