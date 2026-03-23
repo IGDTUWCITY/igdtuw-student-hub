@@ -9,31 +9,26 @@ export function useEvents(from: Date, to: Date, type?: 'contest' | 'hackathon' |
   return useQuery({
     queryKey: ['events', from.toISOString(), to.toISOString(), type],
     queryFn: async (): Promise<CalendarEvent[]> => {
-      const CACHE_TTL_MS = 1000 * 60 * 60 * 24;
+      const CACHE_TTL_MS = 1000 * 60 * 60; // 1 hour for better freshness during testing
       const cacheKey = `events:${from.toISOString()}:${to.toISOString()}:${type || 'all'}`;
       try {
         const cached = localStorage.getItem(cacheKey);
         if (cached) {
           const parsed = JSON.parse(cached);
           if (parsed && parsed.ts && Date.now() - parsed.ts < CACHE_TTL_MS && Array.isArray(parsed.events)) {
+            console.log('Returning cached events');
             const revived = parsed.events.map((row: any) => ({
-              id: row.id,
-              title: row.title,
-              description: row.description,
+              ...row,
               startTime: new Date(row.startTime),
               endTime: new Date(row.endTime),
-              type: row.type as EventType,
-              sourceName: row.sourceName,
-              sourceUrl: row.sourceUrl,
-              platform: row.platform,
-              tags: row.tags || [],
               lastSyncedAt: new Date(row.lastSyncedAt),
-              dedupeKey: row.dedupeKey,
-            } as CalendarEvent));
+            }));
             return revived;
           }
         }
-      } catch { void 0; }
+      } catch (err) {
+        console.warn('Cache read error:', err);
+      }
       function normalizePlatform(value: unknown) {
         if (!value) return '';
         return value
@@ -45,8 +40,8 @@ export function useEvents(from: Date, to: Date, type?: 'contest' | 'hackathon' |
           .replace(/[^a-z0-9]+/g, '');
       }
 
-      const clistUsername = import.meta.env.VITE_CLIST_API_USERNAME;
-      const clistApiKey = import.meta.env.VITE_CLIST_API_KEY;
+      const clistUsername = import.meta.env.VITE_CLIST_API_USERNAME?.replace(/['"]/g, '');
+      const clistApiKey = import.meta.env.VITE_CLIST_API_KEY?.replace(/['"]/g, '');
       const allowedPlatformsRaw = (import.meta.env.VITE_CLIST_PLATFORMS || '')
         .split(',')
         .map(p => p.trim())
@@ -57,55 +52,36 @@ export function useEvents(from: Date, to: Date, type?: 'contest' | 'hackathon' |
         throw new Error('CLIST API is not configured. Set VITE_CLIST_API_USERNAME and VITE_CLIST_API_KEY.');
       }
 
-      // clist filter: contests that overlap [from, to]
-      // start__lt=to AND end__gt=from
-      const params = new URLSearchParams({
-        username: clistUsername,
-        api_key: clistApiKey,
-        start__lt: to.toISOString(),
-        end__gt: from.toISOString(),
-        order_by: 'start',
-      });
-
-      // Narrow results server-side to reduce filtering issues when platform names vary
-      if (allowedPlatformsRaw.length > 0) {
-        const platformDomains = allowedPlatformsRaw.map(p => {
-          const key = normalizePlatform(p);
-          switch (key) {
-            case 'codeforces':
-              return 'codeforces.com';
-            case 'atcoder':
-              return 'atcoder.jp';
-            case 'leetcode':
-              return 'leetcode.com';
-            case 'hackerrank':
-              return 'hackerrank.com';
-            case 'hackerearth':
-              return 'hackerearth.com';
-            case 'codechef':
-              return 'codechef.com';
-            default:
-              return p.toLowerCase();
-          }
-        });
-
-        params.set('resource__name__in', platformDomains.join(','));
+      function formatDate(date: Date) {
+        return date.toISOString().split('.')[0];
       }
 
-      const targetUrl = `https://clist.by/api/v1/json/contest/?${params.toString()}`;
+      const params = new URLSearchParams({
+        start__lt: formatDate(to),
+        end__gt: formatDate(from),
+        order_by: 'start',
+        limit: '1000',
+      });
+
+      const targetUrl = `https://clist.by/api/v2/json/contest/?${params.toString()}`;
+      console.log('Fetching contests from:', targetUrl);
 
       const response = await fetch(targetUrl, {
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `ApiKey ${clistUsername}:${clistApiKey}`
+        },
       });
 
       if (!response.ok) {
         const errorText = await response.text();
+        console.error(`Clist API Error (${response.status}):`, errorText);
         throw new Error(`Failed to fetch contests: ${errorText}`);
       }
 
       const payload = await response.json();
+      console.log('Clist API Payload:', payload);
 
-      // clist v1 returns { meta, objects } (commonly), not { events }
       const rawEvents = Array.isArray(payload.objects)
         ? payload.objects
         : Array.isArray(payload.events)
@@ -113,27 +89,40 @@ export function useEvents(from: Date, to: Date, type?: 'contest' | 'hackathon' |
           : Array.isArray(payload)
             ? payload
             : [];
+      
+      console.log(`Fetched ${rawEvents.length} raw contests`);
 
-      let events = rawEvents.map((row: any) => ({
-        id: row.id || row.dedupeKey || row.dedupe_key,
-        title: row.title || row.event,
-        description: row.description,
-        startTime: new Date(row.startTime || row.start_time || row.start),
-        endTime: new Date(row.endTime || row.end_time || row.end),
-        type: (row.type || row.event_type || 'contest') as EventType,
-        sourceName: row.sourceName || row.source_name || 'Contest Feed',
-        sourceUrl: row.sourceUrl || row.source_url || row.href,
-        platform: row.platform || row.resource?.name || row.resource_domain || row.resource || row.resource_id || row.host,
-        tags: row.tags || [],
-        lastSyncedAt: new Date(row.lastSyncedAt || row.last_synced_at || new Date()),
-        dedupeKey: row.dedupeKey || row.dedupe_key || row.id || `${row.title}-${row.startTime || row.start}`,
-      } as CalendarEvent));
+      let events = rawEvents.map((row: any) => {
+        // In v2, host is usually the domain name, resource is an ID.
+        const platformName = row.host || row.resource?.name || row.resource_domain || row.resource?.toString() || row.source_name || 'Contest Feed';
+        
+        return {
+          id: row.id || row.dedupeKey || row.dedupe_key || `${row.title}-${row.start}`,
+          title: row.title || row.event,
+          description: row.description || '',
+          startTime: new Date(row.start_time || row.start),
+          endTime: new Date(row.end_time || row.end),
+          type: (row.type || row.event_type || 'contest') as EventType,
+          sourceName: row.sourceName || row.source_name || 'Contest Feed',
+          sourceUrl: row.sourceUrl || row.source_url || row.href || row.url,
+          platform: platformName,
+          tags: row.tags || [],
+          lastSyncedAt: new Date(),
+          dedupeKey: row.id || `${row.title}-${row.start}`,
+        } as CalendarEvent;
+      });
 
       if (allowedPlatforms.length > 0) {
-        events = events.filter(event => {
-          const platformKey = normalizePlatform(event.platform || event.sourceName || '');
-          return platformKey && allowedPlatforms.includes(platformKey);
+        const filtered = events.filter(event => {
+          const platformKey = normalizePlatform(event.platform);
+          const isAllowed = allowedPlatforms.includes(platformKey);
+          if (!isAllowed) {
+            // console.log(`Filtering out ${event.title} from ${event.platform} (key: ${platformKey})`);
+          }
+          return isAllowed;
         });
+        console.log(`After platform filtering: ${filtered.length} contests`);
+        events = filtered;
       }
 
       if (type) {
