@@ -3,7 +3,6 @@ import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { WelcomeHeader } from '@/components/dashboard/WelcomeHeader';
 import { StatCard } from '@/components/dashboard/StatCard';
-import { QuickActions } from '@/components/dashboard/QuickActions';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Announcement } from '@/types/database';
@@ -189,7 +188,7 @@ export default function Dashboard() {
           label="Current CGPA"
           value={cgpa?.toFixed(2) || '0.00'}
           subtext="Calculated from all semesters"
-          variant="primary"
+          variant="default"
           delay={0}
         />
         <StatCard
@@ -197,7 +196,7 @@ export default function Dashboard() {
           label="Saved Opportunities"
           value={savedCount}
           subtext="Hackathons & internships"
-          variant="accent"
+          variant="default"
           delay={0.1}
         />
         <StatCard
@@ -205,7 +204,7 @@ export default function Dashboard() {
           label="Upcoming Events"
           value={upcomingEvents}
           subtext="In your calendar"
-          variant="success"
+          variant="default"
           delay={0.2}
         />
         <motion.div
@@ -254,19 +253,11 @@ export default function Dashboard() {
               </div>
             </div>
           </div>
-          <Button asChild variant="outline" size="sm" className="mt-4 w-full">
+          <Button asChild variant="outline" size="sm" className="mt-4 w-full btn-primary-hover">
             <Link to="/settings">Update Profile</Link>
           </Button>
         </motion.div>
       </div>
-
-      {/* Quick Actions */}
-      <section>
-        <h2 className="text-lg font-display font-semibold text-foreground mb-4">
-          Quick Actions
-        </h2>
-        <QuickActions />
-      </section>
 
       {/* Recent Announcements */}
       <section>
