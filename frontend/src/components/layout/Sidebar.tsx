@@ -15,6 +15,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Info,
+  BookOpen,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -25,6 +26,7 @@ const navItems = [
   { icon: GraduationCap, label: 'Academics', path: '/academics' },
   { icon: Briefcase, label: 'Opportunities', path: '/opportunities' },
   { icon: Building2, label: 'Campus Life', path: '/campus' },
+  { icon: BookOpen, label: 'PYQ', path: '/pyq' },
   { icon: User, label: 'Profile', path: '/settings' },
 ];
 

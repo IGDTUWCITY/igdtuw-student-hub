@@ -19,6 +19,8 @@ import Opportunities from "./pages/Opportunities";
 import Campus from "./pages/Campus";
 import Settings from "./pages/Settings";
 import AboutUs from "./pages/AboutUs";
+import PYQList from "./pages/PYQList";
+import PYQDetail from "./pages/PYQDetail";
 import NotFound from "./pages/NotFound";
 import CalendarPage from "./pages/CalendarPage";
 import Landing from "./pages/Landing";
@@ -69,6 +71,8 @@ const App = () => {
                   <Route path="/academics" element={<Academics />} />
                   <Route path="/opportunities" element={<Opportunities />} />
                   <Route path="/campus" element={<Campus />} />
+                  <Route path="/pyq" element={<PYQList />} />
+                  <Route path="/pyq/:subjectId" element={<PYQDetail />} />
                   <Route path="/settings" element={<Settings />} />
                   <Route path="/about" element={<AboutUs />} />
                 </Route>

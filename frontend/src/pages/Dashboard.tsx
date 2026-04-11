@@ -119,12 +119,12 @@ export default function Dashboard() {
       setCgpa(cgpaData);
     }
 
-    // Fetch saved opportunities count (use GET with limit(0) to avoid HEAD aborts)
+    // Fetch saved opportunities count (use GET with limit(1) to avoid HEAD aborts)
     const { count: savedOppsCount } = await supabase
       .from('saved_opportunities')
       .select('*', { count: 'exact' })
       .eq('user_id', user!.id)
-      .limit(0);
+      .limit(1);
     setSavedCount(savedOppsCount || 0);
 
     const { data: upcomingAnnouncements } = await supabase
