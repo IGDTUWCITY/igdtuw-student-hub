@@ -8,7 +8,7 @@ import {
   LayoutDashboard,
   GraduationCap,
   Briefcase,
-  Building2,
+  Users,
   Calendar,
   User,
   LogOut,
@@ -16,25 +16,22 @@ import {
   ChevronRight,
   Info,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
-import { useIsMobile } from '@/hooks/use-mobile';
+import { useState } from 'react';
 
 const navItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
   { icon: Calendar, label: 'Calgo', path: '/calendar' },
   { icon: GraduationCap, label: 'Academics', path: '/academics' },
   { icon: Briefcase, label: 'Opportunities', path: '/opportunities' },
-  { icon: Building2, label: 'Campus Life', path: '/campus' },
+  { icon: Users, label: 'Campus Life', path: '/campus' },
   { icon: User, label: 'Profile', path: '/settings' },
 ];
 
 import { ModeToggle } from '@/components/mode-toggle';
+import { Calendar as CalendarComponent } from '../ui/calendar';
 
 export function Sidebar() {
-  const isMobile = useIsMobile();
-  const [collapsed, setCollapsed] = useState(() =>
-    typeof window !== 'undefined' ? window.innerWidth < 768 : false
-  );
+  const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
   const { profile, signOut } = useAuth();
 
@@ -44,23 +41,18 @@ export function Sidebar() {
     .join('')
     .toUpperCase() || 'U';
 
-  // Auto-adjust when crossing the mobile breakpoint.
-  useEffect(() => {
-    setCollapsed(isMobile);
-  }, [isMobile]);
-
   return (
     <motion.aside
       initial={false}
       animate={{ width: collapsed ? 80 : 280 }}
       transition={{ duration: 0.3, ease: 'easeInOut' }}
-      className="fixed left-0 top-0 h-screen bg-sidebar border-r border-sidebar-border flex-col z-50 flex"
+      className="fixed left-0 top-0 h-screen bg-sidebar border-r border-sidebar-border flex flex-col z-50"
     >
       {/* Logo Section */}
       <div className="p-4 border-b border-sidebar-border">
         <Link to="/dashboard" className="flex items-center gap-3">
-          <div className="w-12 h-12 flex-shrink-0">
-            <img src="/favicon.png" alt="Logo" className="w-full h-full object-contain" />
+          <div className="w-10 h-10 flex-shrink-0">
+            <img src="/favicon.png" alt="Logo" className="w-full h-full object-contain rounded-xl" />
           </div>
           {!collapsed && (
             <motion.div

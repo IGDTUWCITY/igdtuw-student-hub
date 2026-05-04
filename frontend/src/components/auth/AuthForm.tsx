@@ -8,6 +8,30 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Loader2, GraduationCap, Mail, Lock, User } from 'lucide-react';
 import { toast } from 'sonner';
 
+function mapAuthError(error: unknown, isLogin: boolean) {
+  const fallback = isLogin ? 'Sign in failed. Please try again.' : 'Sign up failed. Please try again.';
+
+  if (!error || typeof error !== 'object') {
+    return { title: fallback };
+  }
+
+  const rawMessage = 'message' in error ? String((error as { message?: string }).message || '') : '';
+  const message = rawMessage.toLowerCase();
+
+  if (
+    message.includes('email rate limit exceeded') ||
+    message.includes('over_email_send_rate_limit') ||
+    message.includes('security purposes, you can only request this after')
+  ) {
+    return {
+      title: 'Too many email requests. Please wait about 60 seconds and try again.',
+      description: 'If your account was already created, switch to Sign In after verifying from your latest email.',
+    };
+  }
+
+  return { title: rawMessage || fallback };
+}
+
 export function AuthForm() {
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
@@ -40,8 +64,9 @@ export function AuthForm() {
           description: 'Please check your inbox for a verification link. If you do not see it, check your spam/junk folder.',
         });
       }
-    } catch (error: any) {
-      toast.error(error.message || 'Authentication failed');
+    } catch (error: unknown) {
+      const mapped = mapAuthError(error, isLogin);
+      toast.error(mapped.title, mapped.description ? { description: mapped.description } : undefined);
     } finally {
       setLoading(false);
     }
