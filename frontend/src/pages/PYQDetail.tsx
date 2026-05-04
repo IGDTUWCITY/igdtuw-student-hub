@@ -46,6 +46,7 @@ export default function PYQDetail() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [newPaper, setNewSubject] = useState({ title: '' });
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [viewingPaper, setViewingPaper] = useState<Paper | null>(null);
 
   useEffect(() => {
     if (subjectId) {
@@ -94,9 +95,16 @@ export default function PYQDetail() {
 
     setIsSubmitting(true);
     try {
+      console.log('Uploading paper...');
+      console.log('User:', user);
+      console.log('Subject ID:', subjectId);
+      console.log('Selected file:', selectedFile);
+
       const fileExt = selectedFile.name.split('.').pop();
-      const fileName = `${Math.random()}.${fileExt}`;
+      const fileName = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
       const filePath = `${subjectId}/${fileName}`;
+
+      console.log('File path:', filePath);
 
       // 1. Upload to Storage
       const { error: uploadError, data: uploadData } = await supabase.storage
@@ -106,11 +114,14 @@ export default function PYQDetail() {
           upsert: false
         });
 
+      console.log('Upload result:', { uploadError, uploadData });
+
       if (uploadError) {
+        console.error('Upload error details:', uploadError);
         if (uploadError.message === 'Bucket not found') {
           throw new Error('Storage bucket "pyqs" not found. Please create it in Supabase dashboard.');
         }
-        throw uploadError;
+        throw new Error(`Upload failed: ${uploadError.message} (${uploadError.status})`);
       }
 
       // 2. Get Public URL
@@ -118,10 +129,7 @@ export default function PYQDetail() {
         .from('pyqs')
         .getPublicUrl(filePath);
 
-      // Verify the URL has the correct format
-      if (!publicUrl.includes('/storage/v1/object/public/')) {
-        console.warn('Generated URL might be missing "public" segment:', publicUrl);
-      }
+      console.log('Public URL:', publicUrl);
 
       // 3. Insert into Database
       const { error: dbError } = await supabase
@@ -132,8 +140,13 @@ export default function PYQDetail() {
           file_url: publicUrl,
           file_type: fileExt?.toLowerCase() === 'pdf' ? 'pdf' : 'image',
           storage_path: filePath,
+          file_key: filePath,
+          file_provider: 'supabase',
+          bucket_name: 'pyqs',
           created_by: user?.id
         }]);
+
+      console.log('DB insert result:', dbError);
 
       if (dbError) throw dbError;
 
@@ -143,6 +156,7 @@ export default function PYQDetail() {
       setSelectedFile(null);
       fetchData();
     } catch (error: any) {
+      console.error('Full error:', error);
       toast.error(error.message || 'Failed to upload paper');
     } finally {
       setIsSubmitting(false);
@@ -230,7 +244,11 @@ export default function PYQDetail() {
       ) : papers.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {papers.map((paper) => (
-            <Card key={paper.id} className="card-hover border-border/50">
+            <Card 
+              key={paper.id} 
+              className="card-hover border-border/50 cursor-pointer"
+              onClick={() => setViewingPaper(paper)}
+            >
               <CardContent className="p-4">
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex items-center gap-3">
@@ -253,14 +271,9 @@ export default function PYQDetail() {
                       </div>
                     </div>
                   </div>
-                  <a 
-                    href={paper.file_url} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="p-2 rounded-full hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors"
-                  >
+                  <div className="p-2 rounded-full text-muted-foreground group-hover:text-primary transition-colors">
                     <ExternalLink className="w-4 h-4" />
-                  </a>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -275,6 +288,56 @@ export default function PYQDetail() {
           </p>
         </div>
       )}
+
+      {/* Document Viewer Dialog */}
+      <Dialog open={!!viewingPaper} onOpenChange={(open) => !open && setViewingPaper(null)}>
+        <DialogContent className="max-w-5xl w-[95vw] h-[90vh] flex flex-col p-0 overflow-hidden border-none bg-background/95 backdrop-blur-sm">
+          <DialogHeader className="p-4 border-b shrink-0 flex flex-row items-center justify-between space-y-0">
+            <div>
+              <DialogTitle className="text-xl font-display font-bold">
+                {viewingPaper?.title}
+              </DialogTitle>
+              <DialogDescription className="text-xs uppercase tracking-wider font-semibold opacity-70">
+                {viewingPaper?.file_type} Document
+              </DialogDescription>
+            </div>
+          </DialogHeader>
+          
+          <div className="flex-1 bg-muted/30 relative overflow-hidden flex items-center justify-center">
+            {viewingPaper?.file_type === 'pdf' ? (
+              <iframe
+                src={`${viewingPaper.file_url}#toolbar=0&navpanes=0`}
+                className="w-full h-full border-none"
+                title={viewingPaper.title}
+              />
+            ) : (
+              <img
+                src={viewingPaper?.file_url}
+                alt={viewingPaper?.title}
+                className="max-w-full max-h-full object-contain shadow-2xl rounded-sm"
+              />
+            )}
+          </div>
+          
+          <DialogFooter className="p-3 border-t shrink-0 sm:justify-center">
+            <Button 
+              variant="outline" 
+              className="btn-primary-hover w-full sm:w-auto"
+              onClick={() => window.open(viewingPaper?.file_url, '_blank')}
+            >
+              <ExternalLink className="w-4 h-4 mr-2" />
+              Open in New Tab
+            </Button>
+            <Button 
+              variant="ghost" 
+              onClick={() => setViewingPaper(null)}
+              className="w-full sm:w-auto"
+            >
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

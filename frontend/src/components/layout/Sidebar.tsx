@@ -11,6 +11,7 @@ import {
   Users,
   Calendar,
   User,
+  Building2,
   LogOut,
   ChevronLeft,
   ChevronRight,
