@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Folder, Search } from 'lucide-react';
+import { Plus, Folder, Search, Edit2, Trash2, MoreVertical } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -19,6 +19,12 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 interface Subject {
   id: string;
@@ -37,6 +43,9 @@ export default function PYQList() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [newSubject, setNewSubject] = useState({ name: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [renameSubject, setRenameSubject] = useState<any>(null);
+  const [renameName, setRenameName] = useState('');
+  const [deleteSubject, setDeleteSubject] = useState<any>(null);
 
   useEffect(() => {
     checkAdmin();
@@ -95,6 +104,65 @@ export default function PYQList() {
       fetchSubjects();
     } catch (error: any) {
       toast.error(error.message || 'Failed to create subject folder');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleRenameSubject = async () => {
+    if (!renameSubject || !renameName.trim()) return;
+    setIsSubmitting(true);
+    try {
+      const { error } = await supabase
+        .from('pyq_subjects')
+        .update({ name: renameName.trim() })
+        .eq('id', renameSubject.id);
+
+      if (error) throw error;
+      toast.success('Subject folder renamed successfully');
+      setRenameSubject(null);
+      setRenameName('');
+      fetchSubjects();
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to rename subject folder');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDeleteSubject = async () => {
+    if (!deleteSubject) return;
+    setIsSubmitting(true);
+    try {
+      // 1. First get all papers in this subject to delete from storage
+      const { data: papers } = await supabase
+        .from('pyq_papers')
+        .select('storage_path')
+        .eq('subject_id', deleteSubject.id);
+
+      // 2. Delete files from storage
+      if (papers && papers.length > 0) {
+        const storagePaths = papers.map(p => p.storage_path).filter(Boolean);
+        if (storagePaths.length > 0) {
+          const { error: storageError } = await supabase.storage
+            .from('pyqs')
+            .remove(storagePaths);
+          if (storageError) console.warn('Storage delete error:', storageError);
+        }
+      }
+
+      // 3. Delete from database (cascade delete will handle papers)
+      const { error: dbError } = await supabase
+        .from('pyq_subjects')
+        .delete()
+        .eq('id', deleteSubject.id);
+
+      if (dbError) throw dbError;
+      toast.success('Subject folder deleted successfully');
+      setDeleteSubject(null);
+      fetchSubjects();
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to delete subject folder');
     } finally {
       setIsSubmitting(false);
     }
@@ -175,8 +243,8 @@ export default function PYQList() {
       ) : filteredSubjects.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {filteredSubjects.map((subject) => (
-            <Link key={subject.id} to={`/pyq/${subject.id}`}>
-              <Card className="card-hover cursor-pointer h-full border-border/50">
+            <Card key={subject.id} className="card-hover h-full border-border/50">
+              <Link to={`/pyq/${subject.id}`} className="block">
                 <CardHeader>
                   <div className="flex items-center gap-3 mb-2">
                     <div className="p-2 rounded-lg bg-primary/10 text-primary">
@@ -193,8 +261,41 @@ export default function PYQList() {
                     </CardDescription>
                   )}
                 </CardHeader>
-              </Card>
-            </Link>
+              </Link>
+              {isAdmin && (
+                <div className="px-4 pb-4">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-8 w-8 ml-auto"
+                      >
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem 
+                        onClick={() => {
+                          setRenameSubject(subject);
+                          setRenameName(subject.name);
+                        }}
+                      >
+                        <Edit2 className="h-4 w-4 mr-2" />
+                        Rename
+                      </DropdownMenuItem>
+                      <DropdownMenuItem 
+                        onClick={() => setDeleteSubject(subject)}
+                        className="text-red-600 focus:text-red-600"
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              )}
+            </Card>
           ))}
         </div>
       ) : (
@@ -206,6 +307,74 @@ export default function PYQList() {
           </p>
         </div>
       )}
+
+      {/* Rename Subject Dialog */}
+      <Dialog open={!!renameSubject} onOpenChange={(open) => !open && setRenameSubject(null)}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Rename Subject Folder</DialogTitle>
+            <DialogDescription>Enter a new name for the subject folder.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 pt-4">
+            <div className="space-y-2">
+              <Label htmlFor="rename-subject-name">New Name</Label>
+              <Input
+                id="rename-subject-name"
+                value={renameName}
+                onChange={(e) => setRenameName(e.target.value)}
+                placeholder="e.g. Data Structures"
+                autoFocus
+              />
+            </div>
+          </div>
+          <DialogFooter className="pt-4">
+            <Button 
+              type="button" 
+              variant="ghost" 
+              onClick={() => setRenameSubject(null)}
+            >
+              Cancel
+            </Button>
+            <Button 
+              type="button" 
+              disabled={isSubmitting || !renameName.trim()}
+              className="btn-primary-hover"
+              onClick={handleRenameSubject}
+            >
+              {isSubmitting ? 'Renaming...' : 'Rename'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Subject Dialog */}
+      <Dialog open={!!deleteSubject} onOpenChange={(open) => !open && setDeleteSubject(null)}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Delete Subject Folder</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete "{deleteSubject?.name}"? This will also delete all papers inside it. This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="pt-4">
+            <Button 
+              type="button" 
+              variant="ghost" 
+              onClick={() => setDeleteSubject(null)}
+            >
+              Cancel
+            </Button>
+            <Button 
+              type="button" 
+              variant="destructive"
+              disabled={isSubmitting}
+              onClick={handleDeleteSubject}
+            >
+              {isSubmitting ? 'Deleting...' : 'Delete'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

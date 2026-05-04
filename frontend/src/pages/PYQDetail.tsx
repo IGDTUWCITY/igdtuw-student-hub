@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Plus, FileText, ImageIcon, ExternalLink, Calendar } from 'lucide-react';
+import { ArrowLeft, Plus, FileText, ImageIcon, ExternalLink, Calendar, Trash2, Edit2, MoreVertical } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
@@ -21,6 +21,12 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 interface Paper {
   id: string;
@@ -39,7 +45,7 @@ export default function PYQDetail() {
   const { subjectId } = useParams<{ subjectId: string }>();
   const { user } = useAuth();
   const [subject, setSubject] = useState<Subject | null>(null);
-  const [papers, setPapers] = useState<Paper[]>([]);
+  const [papers, setPapers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setAdmin] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -47,6 +53,9 @@ export default function PYQDetail() {
   const [newPaper, setNewSubject] = useState({ title: '' });
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [viewingPaper, setViewingPaper] = useState<Paper | null>(null);
+  const [renamePaper, setRenamePaper] = useState<any>(null);
+  const [renameTitle, setRenameTitle] = useState('');
+  const [deletePaper, setDeletePaper] = useState<any>(null);
 
   useEffect(() => {
     if (subjectId) {
@@ -163,6 +172,56 @@ export default function PYQDetail() {
     }
   };
 
+  const handleRenamePaper = async () => {
+    if (!renamePaper || !renameTitle.trim()) return;
+    setIsSubmitting(true);
+    try {
+      const { error } = await supabase
+        .from('pyq_papers')
+        .update({ title: renameTitle.trim() })
+        .eq('id', renamePaper.id);
+
+      if (error) throw error;
+      toast.success('Paper renamed successfully');
+      setRenamePaper(null);
+      setRenameTitle('');
+      fetchData();
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to rename paper');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDeletePaper = async () => {
+    if (!deletePaper) return;
+    setIsSubmitting(true);
+    try {
+      // 1. Delete from Storage
+      if (deletePaper.storage_path) {
+        const { error: storageError } = await supabase.storage
+          .from('pyqs')
+          .remove([deletePaper.storage_path]);
+        if (storageError) console.warn('Storage delete error (file might not exist):', storageError);
+      }
+
+      // 2. Delete from Database
+      const { error: dbError } = await supabase
+        .from('pyq_papers')
+        .delete()
+        .eq('id', deletePaper.id);
+
+      if (dbError) throw dbError;
+      toast.success('Paper deleted successfully');
+      setDeletePaper(null);
+      fetchData();
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to delete paper');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <div className="container mx-auto p-6 space-y-8 animate-in fade-in duration-500">
       {/* Navigation & Header */}
@@ -246,19 +305,21 @@ export default function PYQDetail() {
           {papers.map((paper) => (
             <Card 
               key={paper.id} 
-              className="card-hover border-border/50 cursor-pointer"
-              onClick={() => setViewingPaper(paper)}
+              className="card-hover border-border/50"
             >
               <CardContent className="p-4">
                 <div className="flex items-start justify-between gap-4">
-                  <div className="flex items-center gap-3">
+                  <div 
+                    className="flex items-center gap-3 cursor-pointer flex-1"
+                    onClick={() => setViewingPaper(paper)}
+                  >
                     <div className={cn(
                       "p-2 rounded-lg",
                       paper.file_type === 'pdf' ? "bg-red-500/10 text-red-500" : "bg-blue-500/10 text-blue-500"
                     )}>
                       {paper.file_type === 'pdf' ? <FileText className="w-5 h-5" /> : <ImageIcon className="w-5 h-5" />}
                     </div>
-                    <div>
+                    <div className="flex-1">
                       <h3 className="font-medium text-foreground line-clamp-1">{paper.title}</h3>
                       <div className="flex items-center gap-3 mt-1">
                         <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider bg-muted px-1.5 py-0.5 rounded">
@@ -271,9 +332,42 @@ export default function PYQDetail() {
                       </div>
                     </div>
                   </div>
-                  <div className="p-2 rounded-full text-muted-foreground group-hover:text-primary transition-colors">
-                    <ExternalLink className="w-4 h-4" />
-                  </div>
+                  {isAdmin && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-8 w-8"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setRenamePaper(paper);
+                            setRenameTitle(paper.title);
+                          }}
+                        >
+                          <Edit2 className="h-4 w-4 mr-2" />
+                          Rename
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDeletePaper(paper);
+                          }}
+                          className="text-red-600 focus:text-red-600"
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -334,6 +428,74 @@ export default function PYQDetail() {
               className="w-full sm:w-auto"
             >
               Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Rename Dialog */}
+      <Dialog open={!!renamePaper} onOpenChange={(open) => !open && setRenamePaper(null)}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Rename Paper</DialogTitle>
+            <DialogDescription>Enter a new title for the paper.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 pt-4">
+            <div className="space-y-2">
+              <Label htmlFor="rename-title">New Title</Label>
+              <Input
+                id="rename-title"
+                value={renameTitle}
+                onChange={(e) => setRenameTitle(e.target.value)}
+                placeholder="e.g. Mid Term 2023"
+                autoFocus
+              />
+            </div>
+          </div>
+          <DialogFooter className="pt-4">
+            <Button 
+              type="button" 
+              variant="ghost" 
+              onClick={() => setRenamePaper(null)}
+            >
+              Cancel
+            </Button>
+            <Button 
+              type="button" 
+              disabled={isSubmitting || !renameTitle.trim()}
+              className="btn-primary-hover"
+              onClick={handleRenamePaper}
+            >
+              {isSubmitting ? 'Renaming...' : 'Rename'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Dialog */}
+      <Dialog open={!!deletePaper} onOpenChange={(open) => !open && setDeletePaper(null)}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Delete Paper</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete "{deletePaper?.title}"? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="pt-4">
+            <Button 
+              type="button" 
+              variant="ghost" 
+              onClick={() => setDeletePaper(null)}
+            >
+              Cancel
+            </Button>
+            <Button 
+              type="button" 
+              variant="destructive"
+              disabled={isSubmitting}
+              onClick={handleDeletePaper}
+            >
+              {isSubmitting ? 'Deleting...' : 'Delete'}
             </Button>
           </DialogFooter>
         </DialogContent>
