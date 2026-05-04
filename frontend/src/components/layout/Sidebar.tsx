@@ -15,6 +15,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Info,
+  BookOpen,
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -23,7 +24,8 @@ const navItems = [
   { icon: Calendar, label: 'Calgo', path: '/calendar' },
   { icon: GraduationCap, label: 'Academics', path: '/academics' },
   { icon: Briefcase, label: 'Opportunities', path: '/opportunities' },
-  { icon: Users, label: 'Campus Life', path: '/campus' },
+  { icon: Building2, label: 'Campus Life', path: '/campus' },
+  { icon: BookOpen, label: 'PYQ', path: '/pyq' },
   { icon: User, label: 'Profile', path: '/settings' },
 ];
 
@@ -49,7 +51,7 @@ export function Sidebar() {
       className="fixed left-0 top-0 h-screen bg-sidebar border-r border-sidebar-border flex flex-col z-50"
     >
       {/* Logo Section */}
-      <div className="p-4 border-b border-sidebar-border">
+      <div className="p-4 border-b border-sidebar-border flex items-center justify-between">
         <Link to="/dashboard" className="flex items-center gap-3">
           <div className="w-10 h-10 flex-shrink-0">
             <img src="/favicon.png" alt="Logo" className="w-full h-full object-contain rounded-xl" />
@@ -67,6 +69,11 @@ export function Sidebar() {
             </motion.div>
           )}
         </Link>
+        {!collapsed && (
+          <div className="flex flex-col items-center">
+             <ModeToggle />
+          </div>
+        )}
       </div>
 
       {/* Navigation */}
@@ -78,11 +85,10 @@ export function Sidebar() {
               key={item.path}
               to={item.path}
               className={cn(
-                'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200',
-                'hover:bg-sidebar-accent dark:hover:bg-[hsl(var(--primary-hover))] group',
+                'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group',
                 isActive
                   ? 'bg-sidebar-primary text-sidebar-primary-foreground'
-                  : 'text-sidebar-foreground'
+                  : 'text-sidebar-foreground hover:bg-primary/10 hover:text-primary dark:hover:bg-primary/20 dark:hover:text-primary-foreground'
               )}
             >
               <item.icon
@@ -90,7 +96,7 @@ export function Sidebar() {
                   'w-5 h-5 flex-shrink-0',
                   isActive
                     ? 'text-sidebar-primary-foreground'
-                    : 'text-muted-foreground group-hover:text-sidebar-foreground dark:group-hover:text-primary-foreground'
+                    : 'text-muted-foreground group-hover:text-primary dark:group-hover:text-primary-foreground'
                 )}
               />
               {!collapsed && (
@@ -106,11 +112,10 @@ export function Sidebar() {
         <Link
           to="/about"
           className={cn(
-            'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200',
-            'hover:bg-sidebar-accent dark:hover:bg-[hsl(var(--primary-hover))] group',
+            'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group',
             location.pathname === '/about'
               ? 'bg-sidebar-primary text-sidebar-primary-foreground'
-              : 'text-sidebar-foreground'
+              : 'text-sidebar-foreground hover:bg-primary/10 hover:text-primary dark:hover:bg-primary/20 dark:hover:text-primary-foreground'
           )}
         >
           <Info
@@ -118,7 +123,7 @@ export function Sidebar() {
               'w-5 h-5 flex-shrink-0',
               location.pathname === '/about'
                 ? 'text-sidebar-primary-foreground'
-                : 'text-muted-foreground group-hover:text-sidebar-foreground dark:group-hover:text-primary-foreground'
+                : 'text-muted-foreground group-hover:text-primary dark:group-hover:text-primary-foreground'
             )}
           />
           {!collapsed && <span className="font-medium text-sm">About Us</span>}
@@ -149,11 +154,6 @@ export function Sidebar() {
               </p>
             </div>
           )}
-        </div>
-
-        <div className={cn("flex justify-center my-2", !collapsed && "justify-start px-2")}>
-           <ModeToggle />
-           {!collapsed && <span className="ml-2 text-sm font-medium self-center">Theme</span>}
         </div>
 
         <Button

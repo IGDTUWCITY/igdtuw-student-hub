@@ -3,7 +3,6 @@ import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { WelcomeHeader } from '@/components/dashboard/WelcomeHeader';
 import { StatCard } from '@/components/dashboard/StatCard';
-import { QuickActions } from '@/components/dashboard/QuickActions';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Announcement } from '@/types/database';
@@ -57,6 +56,29 @@ export default function Dashboard() {
       fetchDashboardData();
     }
   }, [user]);
+  useEffect(() => {
+    const channel = supabase
+      .channel('public:announcements')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'announcements' },
+        () => fetchDashboardData()
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'announcements' },
+        () => fetchDashboardData()
+      )
+      .on(
+        'postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'announcements' },
+        () => fetchDashboardData()
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   const fetchDashboardData = async () => {
     // Fetch CGPA
@@ -97,22 +119,37 @@ export default function Dashboard() {
       setCgpa(cgpaData);
     }
 
-    // Fetch saved opportunities count (use GET with limit(0) to avoid HEAD aborts)
+    // Fetch saved opportunities count (use GET with limit(1) to avoid HEAD aborts)
     const { count: savedOppsCount } = await supabase
       .from('saved_opportunities')
       .select('*', { count: 'exact' })
       .eq('user_id', user!.id)
-      .limit(0);
+      .limit(1);
     setSavedCount(savedOppsCount || 0);
 
-    // Fetch upcoming events count (avoid HEAD)
-    const { count: eventsCount } = await supabase
-      .from('user_events')
-      .select('*', { count: 'exact' })
-      .eq('user_id', user!.id)
-      .gte('event_date', new Date().toISOString())
-      .limit(0);
-    setUpcomingEvents(eventsCount || 0);
+    const { data: upcomingAnnouncements } = await supabase
+      .from('announcements')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (upcomingAnnouncements) {
+      const now = new Date();
+      const activeUpcoming = (upcomingAnnouncements as AnnRow[]).filter((a) => {
+        const timeStr = a.end_time || a.start_time || '23:59';
+        const endDateRaw = (a as any).end_date || a.event_date;
+        if (!endDateRaw && !a.event_date) return false;
+        let end = new Date(`${String(endDateRaw || a.event_date)}T${timeStr}`);
+        if (isNaN(end.getTime())) {
+          const raw = String(endDateRaw || a.event_date);
+          const [y, m, d] = raw.split('-').map((s: string) => parseInt(s, 10));
+          const [hh, mm] = String(timeStr).split(':').map((s: string) => parseInt(s, 10));
+          end = new Date(y, (m || 1) - 1, d || 1, hh || 0, mm || 0);
+        }
+        return end.getTime() >= now.getTime();
+      });
+      setUpcomingEvents(activeUpcoming.length);
+    } else {
+      setUpcomingEvents(0);
+    }
 
     // Fetch recent announcements
     const { data: announcementsData } = await supabase
@@ -123,11 +160,13 @@ export default function Dashboard() {
     if (announcementsData) {
       const now = new Date();
       const active = (announcementsData as AnnRow[]).filter((a) => {
-        if (!a.event_date) return true;
         const timeStr = a.end_time || a.start_time || '23:59';
-        let end = new Date(`${String(a.event_date)}T${timeStr}`);
+        const endDateRaw = (a as any).end_date || a.event_date;
+        if (!endDateRaw && !a.event_date) return true;
+        let end = new Date(`${String(endDateRaw || a.event_date)}T${timeStr}`);
         if (isNaN(end.getTime())) {
-          const [y, m, d] = String(a.event_date).split('-').map((s: string) => parseInt(s, 10));
+          const raw = String(endDateRaw || a.event_date);
+          const [y, m, d] = raw.split('-').map((s: string) => parseInt(s, 10));
           const [hh, mm] = String(timeStr).split(':').map((s: string) => parseInt(s, 10));
           end = new Date(y, (m || 1) - 1, d || 1, hh || 0, mm || 0);
         }
@@ -149,7 +188,7 @@ export default function Dashboard() {
           label="Current CGPA"
           value={cgpa?.toFixed(2) || '0.00'}
           subtext="Calculated from all semesters"
-          variant="primary"
+          variant="default"
           delay={0}
         />
         <StatCard
@@ -157,7 +196,7 @@ export default function Dashboard() {
           label="Saved Opportunities"
           value={savedCount}
           subtext="Hackathons & internships"
-          variant="accent"
+          variant="default"
           delay={0.1}
         />
         <StatCard
@@ -165,7 +204,7 @@ export default function Dashboard() {
           label="Upcoming Events"
           value={upcomingEvents}
           subtext="In your calendar"
-          variant="success"
+          variant="default"
           delay={0.2}
         />
         <motion.div
@@ -214,19 +253,11 @@ export default function Dashboard() {
               </div>
             </div>
           </div>
-          <Button asChild variant="outline" size="sm" className="mt-4 w-full">
+          <Button asChild variant="outline" size="sm" className="mt-4 w-full btn-primary-hover">
             <Link to="/settings">Update Profile</Link>
           </Button>
         </motion.div>
       </div>
-
-      {/* Quick Actions */}
-      <section>
-        <h2 className="text-lg font-display font-semibold text-foreground mb-4">
-          Quick Actions
-        </h2>
-        <QuickActions />
-      </section>
 
       {/* Recent Announcements */}
       <section>
