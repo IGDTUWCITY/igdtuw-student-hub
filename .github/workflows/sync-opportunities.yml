@@ -50,4 +50,4 @@ jobs:
           curl -f -sS -X POST "https://igdtuw-student-hub.onrender.com/api/sync-opportunities" \
             -H "Content-Type: application/json" \
             -H "x-cron-secret: ${{ secrets.CRON_SECRET }}" \
-            -d '{"type":"research-conference"}'
+            -d '{"type":"research_conference"}'
