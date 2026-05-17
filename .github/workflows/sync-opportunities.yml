@@ -1,0 +1,53 @@
+name: Sync Opportunities Daily
+
+on:
+  schedule:
+    - cron: "30 3 * * *"
+  workflow_dispatch:
+
+jobs:
+  sync-opportunities:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Sync hackathons
+        run: |
+          curl -f -sS -X POST "https://igdtuw-student-hub.onrender.com/api/sync-opportunities" \
+            -H "Content-Type: application/json" \
+            -H "x-cron-secret: ${{ secrets.CRON_SECRET }}" \
+            -d '{"type":"hackathon"}'
+
+      - name: Sync internships
+        run: |
+          curl -f -sS -X POST "https://igdtuw-student-hub.onrender.com/api/sync-opportunities" \
+            -H "Content-Type: application/json" \
+            -H "x-cron-secret: ${{ secrets.CRON_SECRET }}" \
+            -d '{"type":"internship"}'
+
+      - name: Sync scholarships
+        run: |
+          curl -f -sS -X POST "https://igdtuw-student-hub.onrender.com/api/sync-opportunities" \
+            -H "Content-Type: application/json" \
+            -H "x-cron-secret: ${{ secrets.CRON_SECRET }}" \
+            -d '{"type":"scholarship"}'
+
+      - name: Sync competitions
+        run: |
+          curl -f -sS -X POST "https://igdtuw-student-hub.onrender.com/api/sync-opportunities" \
+            -H "Content-Type: application/json" \
+            -H "x-cron-secret: ${{ secrets.CRON_SECRET }}" \
+            -d '{"type":"competition"}'
+
+      - name: Sync workshops
+        run: |
+          curl -f -sS -X POST "https://igdtuw-student-hub.onrender.com/api/sync-opportunities" \
+            -H "Content-Type: application/json" \
+            -H "x-cron-secret: ${{ secrets.CRON_SECRET }}" \
+            -d '{"type":"workshop"}'
+
+      - name: Sync research conferences
+        run: |
+          curl -f -sS -X POST "https://igdtuw-student-hub.onrender.com/api/sync-opportunities" \
+            -H "Content-Type: application/json" \
+            -H "x-cron-secret: ${{ secrets.CRON_SECRET }}" \
+            -d '{"type":"research-conference"}'
